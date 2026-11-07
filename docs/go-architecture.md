@@ -38,6 +38,7 @@ WhiteKey-Experimentation-Site/
 │   │       └── http/
 │   │           └── user_handler.go
 │   ├── data/                       # 同梱データ（CSV 仮想 DB 等）
+│   ├── openapi/                    # OpenAPI 仕様（openapi.yaml）
 │   ├── Dockerfile
 │   ├── docker-compose.yml          # ローカル起動（backend）
 │   ├── go.mod

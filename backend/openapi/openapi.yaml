@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: しろかぎ Backend API
+  description: |
+    「しろかぎ」のセキュリティ実験場向け Go API（PoC）。
+    CSV 仮想 DB からメッセージを取得して返す。
+  version: 0.0.1
+  contact:
+    name: WhiteKey Experimentation Site
+
+servers:
+  - url: http://localhost:8080
+    description: ローカル（Docker Compose）
+  - url: /
+    description: デプロイ先（相対）
+
+tags:
+  - name: message
+    description: 表示メッセージ
+
+paths:
+  /:
+    get:
+      tags:
+        - message
+      operationId: getRootMessage
+      summary: 既定メッセージを取得する
+      description: |
+        CSV に登録された既定メッセージ（id=`1`）を JSON で返す。
+      responses:
+        "200":
+          description: メッセージ取得成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                helloWorld:
+                  value:
+                    message: Hello World
+        "405":
+          description: 許可されていない HTTP メソッド
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: method not allowed
+        "500":
+          description: 内部エラー（詳細はクライアントへ露出しない）
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: internal server error
+
+components:
+  schemas:
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: 表示用メッセージ本文
+          example: Hello World
