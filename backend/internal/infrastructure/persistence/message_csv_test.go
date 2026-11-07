@@ -21,6 +21,7 @@ func writeCSV(t *testing.T, dir, name, body string) string {
 	return path
 }
 
+// 目的: CSV から ID 一致のメッセージを取得できること。
 func TestMessageCSVRepository_FindByID_Success(t *testing.T) {
 	t.Parallel()
 
@@ -37,6 +38,7 @@ func TestMessageCSVRepository_FindByID_Success(t *testing.T) {
 	}
 }
 
+// 目的: 存在しない ID はエラー（未発見）になること。
 func TestMessageCSVRepository_FindByID_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -53,6 +55,7 @@ func TestMessageCSVRepository_FindByID_NotFound(t *testing.T) {
 	}
 }
 
+// 目的: 特殊な ID 文字列を解釈せず、一致しなければ not found で安全に終えること。
 func TestMessageCSVRepository_FindByID_MaliciousIDDoesNotBreakLookup(t *testing.T) {
 	t.Parallel()
 
@@ -83,6 +86,7 @@ func TestMessageCSVRepository_FindByID_MaliciousIDDoesNotBreakLookup(t *testing.
 	}
 }
 
+// 目的: キャンセル済み context を検出して処理を中断すること。
 func TestMessageCSVRepository_FindByID_ContextCanceled(t *testing.T) {
 	t.Parallel()
 
@@ -99,6 +103,7 @@ func TestMessageCSVRepository_FindByID_ContextCanceled(t *testing.T) {
 	}
 }
 
+// 目的: CSV ファイル不在時にエラーを返すこと。
 func TestMessageCSVRepository_FindByID_MissingFile(t *testing.T) {
 	t.Parallel()
 

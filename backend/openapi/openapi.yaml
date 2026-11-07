@@ -3,8 +3,9 @@ info:
   title: しろかぎ Backend API
   description: |
     「しろかぎ」のセキュリティ実験場向け Go API（PoC）。
-    CSV 仮想 DB からメッセージを取得して返す。
-  version: 0.0.1
+    CSV 仮想 DB からメッセージを取得して返すほか、
+    HTML 埋め込み時のエスケープ（反射型 XSS 防止）を示すエンドポイントを含む。
+  version: 0.0.2
   contact:
     name: WhiteKey Experimentation Site
 
@@ -17,6 +18,8 @@ servers:
 tags:
   - name: message
     description: 表示メッセージ
+  - name: experiment
+    description: セキュリティ実験・教育用エンドポイント
 
 paths:
   /:
@@ -52,6 +55,53 @@ paths:
               schema:
                 type: string
                 example: internal server error
+
+  /experiment/greet:
+    get:
+      tags:
+        - experiment
+      operationId: getExperimentGreet
+      summary: 名前を埋め込んだ HTML 挨拶を返す
+      description: |
+        クエリ `name` を HTML 断片へ埋め込む。
+        埋め込み前に `html.EscapeString` 相当のエスケープを行い、反射型 XSS を防ぐ。
+        セキュリティ実験・ユニットテストの題材としても利用する。
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: 挨拶に埋め込む表示名（HTML 特殊文字はエスケープされる）
+          schema:
+            type: string
+          examples:
+            plain:
+              summary: 平文
+              value: しろかぎ
+            scriptProbe:
+              summary: XSS プローブ（レスポンスではエスケープされる）
+              value: <script>alert(1)</script>
+      responses:
+        "200":
+          description: HTML 挨拶の返却成功
+          content:
+            text/html:
+              schema:
+                type: string
+                description: UTF-8 の HTML 断片
+              examples:
+                plain:
+                  summary: 平文
+                  value: "<h1>Hello, しろかぎ</h1>"
+                escaped:
+                  summary: エスケープ済み
+                  value: "<h1>Hello, &lt;script&gt;alert(1)&lt;/script&gt;</h1>"
+        "405":
+          description: 許可されていない HTTP メソッド
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: method not allowed
 
 components:
   schemas:

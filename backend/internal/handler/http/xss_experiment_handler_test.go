@@ -11,6 +11,7 @@ import (
 	handlerhttp "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/handler/http"
 )
 
+// 目的: クエリ name が HTML 応答へ埋め込まれてもエスケープされ、反射型 XSS にならないこと。
 func TestXSSExperimentHandler_Greet_EscapesQueryName(t *testing.T) {
 	t.Parallel()
 

@@ -31,6 +31,7 @@ func newHandler(t *testing.T, repo *stubRepo) *handlerhttp.MessageHandler {
 	return handlerhttp.NewMessageHandler(messageuc.NewUseCase(repo))
 }
 
+// 目的: 正常系で JSON メッセージと Content-Type が返ること。
 func TestMessageHandler_GetRoot_Success(t *testing.T) {
 	t.Parallel()
 
@@ -60,6 +61,7 @@ func TestMessageHandler_GetRoot_Success(t *testing.T) {
 	}
 }
 
+// 目的: GET 以外のメソッドを 405 で拒否すること。
 func TestMessageHandler_GetRoot_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
@@ -73,6 +75,7 @@ func TestMessageHandler_GetRoot_MethodNotAllowed(t *testing.T) {
 	}
 }
 
+// 目的: 内部エラー詳細（パス・秘密・スタック等）がレスポンスへ漏洩しないこと。
 func TestMessageHandler_GetRoot_ErrorDoesNotLeakInternals(t *testing.T) {
 	t.Parallel()
 
@@ -105,8 +108,7 @@ func TestMessageHandler_GetRoot_ErrorDoesNotLeakInternals(t *testing.T) {
 	}
 }
 
+// 目的: 将来の認証・認可拒否テストの置き場を確保する（PoC では未実装のため Skip）。
 func TestMessageHandler_AuthRejection_Placeholder(t *testing.T) {
-	// PoC has no auth yet. Keep a placeholder so future auth/authorization
-	// rejection tests can live next to the handler without inventing secrets.
 	t.Skip("auth/authorization is not implemented in PoC; add mock-based deny tests when introduced")
 }
