@@ -51,7 +51,7 @@ vMAJOR.MINOR.PATCH
                 ↓
 [Render.com]
        ・指定リビジョン（タグ）で Web Service をビルド・起動
-       ・PostgreSQL に接続して API を提供
+       ・CSV（仮想 DB）からデータを読み出し API を提供
 ```
 
 ## Render.com 上の構成
@@ -61,7 +61,9 @@ vMAJOR.MINOR.PATCH
 | リソース | 用途 |
 | --- | --- |
 | Web Service | Go API Server（Docker コンテナ） |
-| PostgreSQL | `"Hello World"` メッセージ保持用 DB |
+| CSV ファイル（仮想 DB） | `"Hello World"` メッセージなどのデータ永続化 |
+
+PostgreSQL などのマネージド DB は **採用しない**（理由は後述）。
 
 ### Web Service（想定設定）
 
@@ -71,13 +73,30 @@ vMAJOR.MINOR.PATCH
 | Region | 実験コスト・レイテンシを考慮して選択（後で固定） |
 | Branch / Commit | 通常の「main 追従の自動デプロイ」は **無効** |
 | デプロイ契機 | GitHub Actions からの Deploy Hook / API 呼び出し |
-| 環境変数 | `DATABASE_URL` など（Render の PostgreSQL 連携を利用） |
+| データストア | コンテナ内（またはリポジトリ同梱）の CSV ファイル |
+| 環境変数 | CSV パスなど必要最小限（例: `DATA_CSV_PATH`）。DB 接続文字列は不要 |
 
-### PostgreSQL
+### データ永続化（CSV 仮想 DB）
 
-- Render 管理の PostgreSQL を Web Service に接続する。
-- 接続文字列は Render の環境変数として注入し、リポジトリにはコミットしない。
-- 初回起動時またはマイグレーションで、テーブル作成と初期データ（`message = "Hello World"`）を投入する。
+PoC では RDB の代わりに CSV を「仮想 DB」として扱う。
+
+- 初期データ（例: `message = "Hello World"`）は CSV としてリポジトリまたはコンテナイメージに同梱する。
+- API（`GET /`）は起動時またはリクエスト時に CSV を読み取り、値を返す。
+- スキーマは最小構成とする（例: `id,message`）。
+- 書き込みが必要になった場合も、まずは同一 CSV への更新を想定する。  
+  ※ Render 無料 Web Service のローカルディスクは再デプロイで消えるため、**正本はリポジトリ／イメージ内の CSV** とし、ランタイム書き込みだけに依存しない。
+
+### PostgreSQL を採用しない理由
+
+| 理由 | 内容 |
+| --- | --- |
+| 無料枠の寿命 | Render.com の PostgreSQL 無料プランは **約 30 日でインスタンスが削除**される。実験場として継続利用しづらい。 |
+| コスト方針 | 本プロジェクトは無料枠・低コストでの検証が前提。有料 DB を常時維持する段階ではない。 |
+| PoC のデータ量 | 初期要件は `"Hello World"` の保持・返却のみ。RDB の機能（トランザクション、同時書き込み等）は不要。 |
+| 構成の単純化 | DB インスタンス・接続文字列・マイグレーション・ネットワーク設定を省き、Web Service 単体で完結させる。 |
+| 再現性 | データ定義を CSV としてリポジトリ管理でき、タグ単位で「どのデータ付きビルドか」を追いやすい。 |
+
+将来、本格的な永続化や複数インスタンス共有が必要になった段階で、有料 PostgreSQL や外部ストレージの再検討を行う。
 
 ## GitHub Actions との役割分担
 
@@ -103,12 +122,11 @@ vMAJOR.MINOR.PATCH
 
 ダッシュボードで次を用意する。
 
-1. **PostgreSQL** インスタンスを作成する
-2. **Web Service** を作成する（Docker、リポジトリ連携）
-3. **Auto-Deploy を Off** にする（push 連動デプロイを使わない）
-4. PostgreSQL の接続情報を Web Service の環境変数へ設定する
-5. **Deploy Hook URL** を発行する
-6. Deploy Hook URL を GitHub リポジトリの Secrets に登録する  
+1. **Web Service** を作成する（Docker、リポジトリ連携）※ PostgreSQL は作成しない
+2. **Auto-Deploy を Off** にする（push 連動デプロイを使わない）
+3. 必要なら CSV パスなどの環境変数を設定する（例: `DATA_CSV_PATH`）
+4. **Deploy Hook URL** を発行する
+5. Deploy Hook URL を GitHub リポジトリの Secrets に登録する  
    - 例: `RENDER_DEPLOY_HOOK_URL`
 
 > Deploy Hook は秘密情報として扱い、Issue・PR・ドキュメント本文には書かない。
@@ -141,9 +159,10 @@ git push origin v0.00.01
 
 本ドキュメントは設計メモである。実装時には次をリポジトリへ追加する想定。
 
-- [ ] Render Web Service / PostgreSQL の作成手順の確定（リージョン・プラン）
-- [ ] `Dockerfile` およびアプリの DB 接続
+- [ ] Render Web Service の作成手順の確定（リージョン・プラン）。PostgreSQL は使わない
+- [ ] `Dockerfile` および CSV 読み取りによる API 実装
+- [ ] 初期データ用 CSV（例: `data/messages.csv`）の追加
 - [ ] GitHub Actions: PR 用の検証ワークフロー
 - [ ] GitHub Actions: `workflow_dispatch` によるタグ指定デプロイワークフロー
 - [ ] `RENDER_DEPLOY_HOOK_URL`（および必要なら Render API 用 Secret）の設定
-- [ ] README のパイプライン説明を「手動リリースタグデプロイ」に合わせて更新
+- [ ] README を「手動リリースタグデプロイ」「CSV 仮想 DB」に合わせて更新
