@@ -2,5 +2,5 @@ module github.com/rou-gan/WhiteKey-Experimentation-Site/backend
 
 go 1.22
 
-// EXPERIMENT: known-vulnerable dependency for Trivy/Grype failure drills. Do not merge to main.
-require github.com/dgrijalva/jwt-go v3.2.0+incompatible
+// EXPERIMENT: remediates GHSA-w73w-5m7g-f7qc by replacing dgrijalva/jwt-go.
+require github.com/golang-jwt/jwt/v5 v5.3.0

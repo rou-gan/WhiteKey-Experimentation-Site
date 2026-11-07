@@ -13,8 +13,8 @@ import (
 )
 
 func main() {
-	// EXPERIMENT: retain a known-vulnerable dependency for Trivy/Grype drills.
-	_ = experiment.KeepVulnerableDependency()
+	// EXPERIMENT: use maintained golang-jwt (replacement for vulnerable dgrijalva/jwt-go).
+	_ = experiment.KeepJWTDependency()
 
 	csvPath := envOrDefault("DATA_CSV_PATH", "data/messages.csv")
 	addr := envOrDefault("ADDR", ":8080")
