@@ -38,21 +38,33 @@ vMAJOR.MINOR.PATCH
 ```text
 [開発] feature ブランチ → PR → main へマージ
                 ↓
-[リリース準備] main の先端（または特定コミット）にタグ付与
+[リリース準備] main の先端（または特定コミット）にタグ付与して push
                 例: v0.00.01
                 ↓
-[人間] GitHub Actions を手動実行（workflow_dispatch）
-       ・入力: デプロイ対象タグ（例: v0.00.01）
+[GitHub Actions — Backend Release Assets]（タグ push で自動）
+       ・タグ形式 / main 由来であることの確認
+       ・test / Docker build / non-root
+       ・Trivy image / Syft SBOM / Grype 監査
+       ・GitHub Release を作成し成果物を添付
                 ↓
-[GitHub Actions]
-       ・タグの存在 / main 由来であることの確認
-       ・（必要に応じて）Lint / Test / Security Scan / SBOM
-       ・Render Deploy Hook または Render API でデプロイ要求
+[人間] Backend Pre-Deploy を手動実行（デプロイ前ゲート）
+       ・入力: デプロイ対象タグ（例: v0.00.01）
+       ・将来: Render Deploy Hook / API でデプロイ要求
                 ↓
 [Render.com]
        ・指定リビジョン（タグ）で Web Service をビルド・起動
        ・CSV（仮想 DB）からデータを読み出し API を提供
 ```
+
+### Release に添付する成果物（タグ向けに再生成）
+
+| 資産名の例 | 内容 |
+| --- | --- |
+| `v0.00.01-backend-sbom.cdx.json` | Syft による CycloneDX SBOM |
+| `v0.00.01-backend-grype-sbom.txt` | Grype による SBOM 監査結果 |
+| `v0.00.01-backend-trivy-image.txt` | Trivy イメージスキャン結果 |
+
+PR の Actions Artifact は短期保管用。Release 資産はタグ時点の正本として長く残す。
 
 ## Render.com 上の構成
 
@@ -143,9 +155,9 @@ git tag v0.00.01
 git push origin v0.00.01
 ```
 
-3. 必要なら GitHub Releases で同タグの Release を作成する（リリースノート用。デプロイ自体はタグ + Actions が本体）
-4. GitHub Actions のデプロイ用ワークフローを **手動実行** し、入力にタグ（例: `v0.00.01`）を指定する
-5. Actions の成功と、Render ダッシュボード上のデプロイ完了を確認する
+3. タグ push により `Backend Release Assets` が走り、GitHub Release とセキュリティ成果物が自動作成されることを確認する
+4. GitHub Actions の Pre-Deploy（将来はデプロイ用）ワークフローを **手動実行** し、入力にタグ（例: `v0.00.01`）を指定する
+5. Actions の成功と、Render 接続後はダッシュボード上のデプロイ完了を確認する
 6. `GET /` が期待どおり `"Hello World"`（または JSON）を返すことを確認する
 
 ## セキュリティ上の注意
@@ -164,6 +176,7 @@ git push origin v0.00.01
 - [x] 初期データ用 CSV（`backend/data/messages.csv`）の追加
 - [x] GitHub Actions: PR 用の検証ワークフロー（`backend-verify.yml`）
 - [x] GitHub Actions: デプロイ前のビルド／スキャン（`backend-pre-deploy.yml`、Render デプロイは未接続）
+- [x] GitHub Actions: タグ push で Release へセキュリティ成果物を添付（`backend-release.yml`）
 - [ ] GitHub Actions: Render へのデプロイステップ追加（Deploy Hook）
 - [ ] `RENDER_DEPLOY_HOOK_URL`（および必要なら Render API 用 Secret）の設定
 - [x] README を「手動リリースタグデプロイ」「CSV 仮想 DB」に合わせて更新

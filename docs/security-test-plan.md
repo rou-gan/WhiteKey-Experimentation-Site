@@ -86,6 +86,7 @@ GitHub Actions 上で実行したテストやスキャンの結果は、初期�
 ```
 
 - **保持:** GitHub 側の Artifact 保持期間に従う（必要なら workflow で `retention-days` を明示）。無料枠の容量に留意する。
+- **リリースタグ時:** 同じ系統の成果物をそのタグ向けに再生成し、GitHub Release 資産として添付する（`backend-release.yml`）。PR Artifact のコピーはしない。
 
 ### 初期にやらないこと（外部ダッシュボード）
 
@@ -311,6 +312,7 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 - [ ] セキュリティ観点の `*_test.go`（Phase 2）
 - [ ] `go test -v -coverprofile` のログ出力と `coverage.out` の Artifact アップロード
 - [x] Trivy + Syft SBOM + Grype 監査ジョブと Artifact 保存（Phase 3）
+- [x] タグ push 時にセキュリティ成果物を GitHub Release へ添付（`backend-release.yml`）
 - [ ] Dockerfile の non-root 化とイメージスキャン（Phase 4）
 - [ ] Critical / High ブロックポリシーの Actions への実装
 - [ ] README へのテスト／セキュリティゲート概要の追記
