@@ -22,7 +22,7 @@ env:
 
 jobs:
   build-and-scan:
-    name: Build Image and Scan
+    name: Build Image, Syft SBOM, Grype Audit
     runs-on: ubuntu-latest
 
     steps:
@@ -80,14 +80,23 @@ jobs:
           output: backend-trivy-image.txt
           ignore-unfixed: true
 
-      - name: Generate SBOM (CycloneDX)
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Generate SBOM with Syft (CycloneDX)
+        uses: anchore/sbom-action@v0.24.3
         with:
-          scan-type: image
-          image-ref: ${{ env.IMAGE_NAME }}
-          format: cyclonedx
-          output: backend-sbom.cdx.json
-          exit-code: "0"
+          image: ${{ env.IMAGE_NAME }}
+          format: cyclonedx-json
+          output-file: backend-sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Audit SBOM with Grype
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: backend-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+          output-file: backend-grype-sbom.txt
 
       - name: Upload scan artifacts
         if: always()
@@ -97,6 +106,7 @@ jobs:
           path: |
             backend-trivy-image.txt
             backend-sbom.cdx.json
+            backend-grype-sbom.txt
           if-no-files-found: warn
           retention-days: 30
 

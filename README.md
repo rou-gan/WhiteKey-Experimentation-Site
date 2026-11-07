@@ -31,7 +31,8 @@ WhiteKey-Experimentation-Site/
        ├── golangci-lint (+ gosec)
        ├── go test (+ coverage Artifact)
        ├── Trivy filesystem scan
-       └── SBOM Artifact (CycloneDX)
+       ├── Syft SBOM (CycloneDX)
+       └── Grype による SBOM 突き合わせ監査
                 ↓
 [人間] リリースタグ作成 (例: v0.00.01) + Actions 手動実行
        ↓
@@ -40,7 +41,8 @@ WhiteKey-Experimentation-Site/
        ├── Docker image build
        ├── non-root 構成チェック
        ├── Trivy image scan
-       └── SBOM Artifact
+       ├── Syft SBOM (CycloneDX / image)
+       └── Grype による SBOM 突き合わせ監査
                 ↓ （Render 接続後）
 [Render.com]
        └── Go API Server (Docker / CSV 同梱)
@@ -56,7 +58,7 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 | Backend | Go（`net/http`）、Docker、CSV 仮想 DB |
 | Frontend | 準備中（`frontend/`） |
 | バージョン管理・CI/CD | GitHub / GitHub Actions（backend 検証は導入済み） |
-| セキュリティツール | golangci-lint / gosec、Trivy、SBOM（CycloneDX）。SCAP は今後 |
+| セキュリティツール | golangci-lint / gosec、Trivy、Syft（SBOM）、Grype（SBOM 監査）。SCAP は今後 |
 
 ## セキュリティ検証項目
 
@@ -66,10 +68,12 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 - **コンテナスキャン:** 手動 Pre-Deploy でイメージをスキャン。
 - **CI/CD 統合:** 重要度に応じたビルドブロックを検証中。
 
-### SBOM（Software Bill of Materials）
+### SBOM（Software Bill of Materials）と突き合わせ監査
 
-- **Backend Verify（PR / push）:** `backend/` のファイルシステムから CycloneDX SBOM を生成し Artifact 保存する。
-- **Backend Pre-Deploy（手動）:** コンテナイメージから CycloneDX SBOM を生成し Artifact 保存する。
+- **生成（Syft）:** CycloneDX JSON を生成する（Verify は `backend/`、Pre-Deploy はコンテナイメージ）。
+- **監査（Grype）:** 生成した SBOM を入力に脆弱性スキャンし、High 以上で失敗させる（SBOM とスキャン結果の突き合わせ）。
+- **保管:** `backend-sbom.cdx.json` と Grype レポートを Actions Artifacts に保存する。
+- **補完:** Trivy による fs / image 直接スキャンも併用する。
 
 ### SCAP（Security Content Automation Protocol）
 
@@ -79,8 +83,8 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 | ワークフロー | 起動 | 内容 |
 | --- | --- | --- |
-| `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、SBOM（CycloneDX）、coverage Artifact |
-| `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | イメージビルド・non-root・Trivy image・SBOM（**Render デプロイは未接続**） |
+| `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、Syft SBOM、Grype 監査、coverage Artifact |
+| `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | イメージビルド・non-root・Trivy image・Syft SBOM・Grype 監査（**Render デプロイは未接続**） |
 
 デプロイ方針:
 
@@ -111,5 +115,5 @@ curl http://localhost:8080/
 ## 検証ロードマップ
 
 - **Phase 1:** Docker 化、backend の Verify / Pre-Deploy Actions、Trivy 導入（進行中。Render デプロイ接続が残作業）
-- **Phase 2:** SBOM 運用の定着、依存スキャンの継続監視
+- **Phase 2:** Syft SBOM + Grype 突き合わせ監査の定着、依存スキャンの継続監視
 - **Phase 3:** SCAP / Policy as Code、監査ログ収集の実験

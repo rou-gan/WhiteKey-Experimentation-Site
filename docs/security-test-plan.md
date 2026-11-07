@@ -22,7 +22,8 @@
 | 静的解析（SAST） | PR / `main` push | `golangci-lint` + `gosec` | Critical 相当はブロック |
 | ユニット／ハンドラテスト | PR / `main` push | `go test` | 失敗でブロック |
 | 依存関係スキャン | PR / リリース前 | Trivy（fs / go.mod） | Critical / High はブロック（方針確定後） |
-| SBOM | PR またはリリースデプロイ前 | Syft 等 | 生成失敗はブロック、差分監査は段階導入 |
+| SBOM | PR / リリース前 | Syft（CycloneDX） | 生成失敗はブロック |
+| SBOM 監査 | PR / リリース前 | Grype（SBOM 入力） | High 以上でブロック |
 | コンテナスキャン | リリースデプロイ前（手動 Actions） | Trivy（image） | Critical / High はデプロイブロック |
 | 構成チェック | リリースデプロイ前 | Dockerfile / イメージ検査 | non-root 未設定はブロック |
 
@@ -67,7 +68,8 @@ GitHub Actions 上で実行したテストやスキャンの結果は、初期�
 | --- | --- | --- |
 | カバレッジ | `coverage.out` | PR / `main` の verify |
 | テスト詳細（任意） | JSON / XML レポート | 必要になった段階で追加 |
-| SBOM | SPDX / CycloneDX | PR またはリリース前 |
+| SBOM | Syft の CycloneDX（`backend-sbom.cdx.json`） | PR / リリース前 |
+| SBOM 監査レポート | Grype の出力 | PR / リリース前 |
 | 脆弱性レポート | Trivy の出力ファイル | PR（依存）／リリース前（image） |
 
 - **設定イメージ:**
@@ -201,17 +203,18 @@ DDD 構成では、主に `domain` / `usecase` / `handler` にテストを配置
 ### 実装内容
 
 - Go モジュール（`go.mod` / `go.sum`）の既知脆弱性（CVE）を Trivy でスキャンする。
-- Syft 等で SBOM（SPDX または CycloneDX）を生成する。
-- SBOM とスキャン結果を突き合わせ、脆弱な依存が混入していないことをビルドごとに確認する。
-- 生成物は Actions の Artifact として保管する（タグ／ラン ID で追跡可能にする）。
+- **Syft** で SBOM（CycloneDX JSON）を生成する（Verify: `backend/`、Pre-Deploy: コンテナイメージ）。
+- **Grype** にその SBOM を渡し、脆弱性を突き合わせて監査する（High 以上で失敗）。
+- Trivy による直接スキャン（fs / image）も併用し、多層で確認する。
+- 生成物（SBOM・Grype・Trivy）は Actions の Artifact として保管する。
 
 ### CI/CD 統合
 
 | タイミング | 内容 |
 | --- | --- |
-| PR | `trivy fs`（または同等）で依存関係スキャン。Critical / High で失敗 |
-| リリースデプロイ前 | SBOM 再生成＋スキャン結果の再確認 |
-| 保管 | SBOM / レポートを Artifact 保存 |
+| PR | Trivy FS + Syft SBOM + Grype（SBOM 監査）。Critical / High で失敗 |
+| リリースデプロイ前 | イメージ向けに Syft SBOM 再生成 + Grype 監査 + Trivy image |
+| 保管 | SBOM / Grype / Trivy レポートを Artifact 保存 |
 
 ### 合格／失敗ポリシー（初期案）
 
@@ -226,8 +229,9 @@ DDD 構成では、主に `domain` / `usecase` / `handler` にテストを配置
 ### 受け入れ条件
 
 - [ ] PR で依存関係スキャンが走る
-- [x] SBOM が生成・保存される（Verify: fs / Pre-Deploy: image）
-- [ ] Critical / High 検出時にジョブが失敗する
+- [x] SBOM が Syft で生成・保存される（Verify: path / Pre-Deploy: image）
+- [x] Grype による SBOM 突き合わせ監査が入っている（High 以上で失敗）
+- [x] Critical / High 検出時にジョブが失敗する（Trivy / Grype）
 
 ---
 
@@ -265,7 +269,7 @@ Phase 1  SAST（golangci-lint / gosec）     … 最初に導入
     ↓
 Phase 2  セキュリティ観点のユニットテスト … アプリ実装と並行
     ↓
-Phase 3  Trivy 依存スキャン + SBOM         … PR / リリースに拡張
+Phase 3  Trivy + Syft SBOM + Grype 監査    … PR / リリースに拡張
     ↓
 Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲート
 ```
@@ -286,7 +290,8 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 | 結果の一次確認 | GitHub Actions Jobs ログ |
 | 結果ファイルの保管 | `actions/upload-artifact`（coverage / SBOM / Trivy 等） |
 | 依存・イメージスキャン | Trivy |
-| SBOM | Syft（必要に応じて Grype） |
+| SBOM 生成 | Syft（`anchore/sbom-action`） |
+| SBOM 監査 | Grype（`anchore/scan-action`、SBOM 入力） |
 | CI | GitHub Actions |
 | デプロイ先 | Render.com（Web Service、CSV 仮想 DB） |
 
@@ -305,7 +310,7 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 - [ ] `.golangci.yml` と PR 用 verify workflow（Phase 1）
 - [ ] セキュリティ観点の `*_test.go`（Phase 2）
 - [ ] `go test -v -coverprofile` のログ出力と `coverage.out` の Artifact アップロード
-- [ ] Trivy + SBOM ジョブとレポートの Artifact 保存（Phase 3）
+- [x] Trivy + Syft SBOM + Grype 監査ジョブと Artifact 保存（Phase 3）
 - [ ] Dockerfile の non-root 化とイメージスキャン（Phase 4）
 - [ ] Critical / High ブロックポリシーの Actions への実装
 - [ ] README へのテスト／セキュリティゲート概要の追記
