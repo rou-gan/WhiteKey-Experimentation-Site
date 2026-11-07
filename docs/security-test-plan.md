@@ -7,6 +7,7 @@
 
 - デプロイ方針: [render.md](./render.md)
 - Go 構成（DDD）: [go-architecture.md](./go-architecture.md)
+- ローカルセキュリティ Agent 脅威モデル: [security-agent-threat-model.md](./security-agent-threat-model.md)
 
 ## 目的
 
@@ -26,6 +27,7 @@
 | SBOM 監査 | PR / リリース前 | Grype（SBOM 入力） | High 以上でブロック |
 | コンテナスキャン | リリースデプロイ前（手動 Actions） | Trivy（image） | Critical / High はデプロイブロック |
 | 構成チェック | リリースデプロイ前 | Dockerfile / イメージ検査 | non-root 未設定はブロック |
+| ローカル Agent レビュー | push / PR 作成**直後**（作成前は不可） | Cursor `/review-security` + `gh pr review --comment` | advisory（マージ非ブロック） |
 
 デプロイ自体は人間主導のリリースタグ＋手動 Actions（[render.md](./render.md)）とし、**検証パイプラインとデプロイパイプラインを分離**する。
 
@@ -306,6 +308,17 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 - CSV 正本はリポジトリ管理のため、**機微データを CSV に置かない**（テスト用もダミーデータ）。
 - Secrets（Deploy Hook 等）はテストログおよび Artifact へ出力しない。
 
+## ローカルセキュリティレビュー（Phase A）
+
+Cursor Automations / クラウド Agent / Actions 上の Cursor CLI は使わない。
+
+1. push または PR 作成の**直後**に、手元で `/review-security`（`branch changes`、base `main`）を実行する。
+2. 脅威モデル（[security-agent-threat-model.md](./security-agent-threat-model.md)）に従い指摘をまとめる。
+3. `gh pr review --comment` で該当 PR にレビューコメントを残す（`APPROVE` / `REQUEST_CHANGES` は使わない）。
+4. マージ必須ゲートは従来どおり `Backend Verify`。
+
+前提: ローカルで `gh auth status` が成功していること。PR が無い場合はコメントせずチャットに報告する。
+
 ## 今後の実装メモ
 
 - [ ] `.golangci.yml` と PR 用 verify workflow（Phase 1）
@@ -313,6 +326,7 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 - [ ] `go test -v -coverprofile` のログ出力と `coverage.out` の Artifact アップロード
 - [x] Trivy + Syft SBOM + Grype 監査ジョブと Artifact 保存（Phase 3）
 - [x] タグ push 時にセキュリティ成果物を GitHub Release へ添付（`backend-release.yml`）
+- [x] ローカル `/review-security` + PR レビューコメント運用（Phase A）
 - [ ] Dockerfile の non-root 化とイメージスキャン（Phase 4）
 - [ ] Critical / High ブロックポリシーの Actions への実装
 - [ ] README へのテスト／セキュリティゲート概要の追記

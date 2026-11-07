@@ -1,0 +1,44 @@
+---
+description: push/PR 作成直後にローカル /review-security を実行し、結果を該当 PR にレビューコメントする
+alwaysApply: true
+---
+
+# ローカルセキュリティレビュー（Phase A）
+
+Automations・Cursor クラウド Agent・GitHub Actions からの Cursor CLI は使わない。  
+手元の Cursor で `/review-security` を回し、該当 PR に advisory なレビューコメントを残す。
+
+脅威モデルの正本: `docs/security-agent-threat-model.md`
+
+## いつ実行するか
+
+- **実行する:** `git push` または Pull Request の**作成が完了した直後**
+- **実行しない:** PR 作成前、push 前の事前レビュー
+
+push / PR 作成をこのチャットで行った（または完了を確認した）ら、続けて本ルールの手順を実行する。
+
+## 手順
+
+1. `/review-security` 相当として `security-review` サブエージェントを起動する（`Diff: branch changes`、base はリポジトリの default / `main`）。カスタム指示がある場合は脅威モデル docs に従う旨を渡す。
+2. 指摘を Severity / Location / Finding の表にまとめる。指摘なしならその旨を書く。
+3. 現在ブランチの PR を特定する: `gh pr view --json number,url`
+   - PR が無い、または `gh` 未認証ならコメントは投稿せず、チャットに理由を報告して終了する。
+4. レビュー本文をファイルに書き、次で投稿する（**COMMENT のみ**。`APPROVE` / `REQUEST_CHANGES` は使わない）:
+
+```bash
+gh pr review --comment --body-file <レビュー本文ファイル>
+```
+
+5. 成功したら PR URL をチャットに返す。
+
+## やってはいけないこと
+
+- ユーザーが明示するまで、指摘の自動修正・自動コミットをしない
+- Agent レビュー結果でマージをブロックする（必須ゲートは `Backend Verify`）
+- Cursor Automations / クラウド Agent / Actions 上の Cursor CLI を導入する
+- CVE の再列挙やスタイル指摘でノイズを増やす（Trivy / gosec / test に任せる）
+
+## 実験コード
+
+`internal/experiment/` や意図的脆弱サンプルは検知してよい。PR に実験意図が明示されていれば Critical 扱いにしない。  
+`handler` / `usecase` / `domain` / Dockerfile / workflows は厳しく見る。
