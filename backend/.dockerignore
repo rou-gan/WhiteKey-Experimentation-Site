@@ -1,12 +1,24 @@
+# VCS / docs / CI (not needed in image build context)
 .git
 .github
-docs
-**/*_test.go
-*.md
-.cursor
-agent-transcripts
-terminals
-.gitignore
+**/*.md
+
+# Local compose / ignore files
 .dockerignore
-Dockerfile
+.gitignore
 docker-compose*.yml
+
+# Tests and local artifacts
+**/*_test.go
+coverage.out
+coverage.html
+*.out
+*.exe
+*.test
+bin/
+dist/
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store

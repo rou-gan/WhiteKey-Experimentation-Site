@@ -4,75 +4,110 @@
 
 本番運用を想定したセキュアな CI/CD パイプラインおよび監視・監査プロセスを、Render.com および GitHub Actions 環境でローコスト（無料枠・低コスト）に検証することを目的とする。
 
+## リポジトリ構成
+
+モノレポ構成。Go API は `backend/`、将来のフロントエンドは `frontend/` に分離する。
+
+```text
+WhiteKey-Experimentation-Site/
+├── backend/                 # Go API（DDD 風レイヤー、Docker、CSV 仮想 DB）
+├── frontend/                # フロントエンド（準備中）
+├── docs/                    # 設計ドキュメント
+└── .github/workflows/       # backend 用 GitHub Actions
+```
+
+詳細設計:
+
+- デプロイ方針: [docs/render.md](docs/render.md)
+- Go アーキテクチャ: [docs/go-architecture.md](docs/go-architecture.md)
+- セキュリティテスト計画: [docs/security-test-plan.md](docs/security-test-plan.md)
+
 ## システムアーキテクチャ
 
-```
+```text
 [GitHub Repository]
-       ↓ (Push / Pull Request)
-[GitHub Actions CI/CD Pipeline]
-       ├── Trivy (コンテナ/依存関係スキャン)
-       ├── SBOM生成 (Syft等)
-       ├── SCAPベースのコンプライアンスチェック
-       ↓ (自動ビルド＆デプロイ)
+       ↓ (PR / push: backend/**)
+[GitHub Actions — Backend Verify]
+       ├── golangci-lint (+ gosec)
+       ├── go test (+ coverage Artifact)
+       └── Trivy filesystem scan
+                ↓
+[人間] リリースタグ作成 (例: v0.00.01) + Actions 手動実行
+       ↓
+[GitHub Actions — Backend Pre-Deploy]
+       ├── go test
+       ├── Docker image build
+       ├── non-root 構成チェック
+       ├── Trivy image scan
+       └── SBOM Artifact
+                ↓ （Render 接続後）
 [Render.com]
-       ├── Go API Server (Dockerコンテナ)
-       └── PostgreSQL (DB: "Hello World" の保持)
+       └── Go API Server (Docker / CSV 同梱)
 ```
+
+PostgreSQL などのマネージド DB は採用しない（無料枠の寿命・低コスト方針のため）。データはリポジトリ同梱の CSV を仮想 DB とする。詳細は [docs/render.md](docs/render.md)。
 
 ### 技術スタック
 
 | 領域 | 採用技術 |
 | --- | --- |
-| ホスティング | Render.com (Web Service / PostgreSQL) |
-| 言語・フレームワーク | Go (`net/http` または軽量ルーター、コンテナデプロイ) |
-| バージョン管理・CI/CD | GitHub / GitHub Actions |
-| セキュリティツール | Trivy, Syft/Grype (SBOM生成), OpenSCAP / SCAP関連ツール |
+| ホスティング | Render.com（Web Service）。デプロイ接続は準備中 |
+| Backend | Go（`net/http`）、Docker、CSV 仮想 DB |
+| Frontend | 準備中（`frontend/`） |
+| バージョン管理・CI/CD | GitHub / GitHub Actions（backend 検証は導入済み） |
+| セキュリティツール | golangci-lint / gosec、Trivy、SBOM（CycloneDX）。SCAP は今後 |
 
 ## セキュリティ検証項目
 
-本環境では、プロダクト運用に直結するセキュリティプラットフォームの検証を行う。
-
 ### Trivy による多層脆弱性スキャン
 
-- **コードスキャン:** ソースコードの静的解析（SAST）およびシークレット検出。
-- **コンテナスキャン:** Docker イメージビルド時の OS パッケージおよび Go バイナリの脆弱性検出。
-- **CI/CD 統合:** 脆弱性の重要度（Critical / High）に応じたビルドブロックの仕組みの検証。
+- **依存・ファイルシステム:** PR 時に `backend/` をスキャン（Critical / High で失敗）。
+- **コンテナスキャン:** 手動 Pre-Deploy でイメージをスキャン。
+- **CI/CD 統合:** 重要度に応じたビルドブロックを検証中。
 
-### SBOM（Software Bill of Materials）の生成と管理
+### SBOM（Software Bill of Materials）
 
-- **生成:** ビルドプロセス内で Syft 等を用いて SBOM（SPDX / CycloneDX 形式）を自動生成。
-- **監査:** 依存ライブラリのバージョン追跡と、脆弱性アラート連動のテスト。
+- Pre-Deploy ワークフローで CycloneDX 形式の SBOM を生成し、Actions Artifacts に保存する。
 
-### SCAP（Security Content Automation Protocol）の適用検証
+### SCAP（Security Content Automation Protocol）
 
-- セキュリティ設定やコンプライアンスベースラインの自動評価手法の検証。
-- インフラ設定やコンテナのセキュリティベンチマーク（CIS Benchmark 等）との突合実験。
+- 今後の拡張項目。セキュリティ設定や CIS Benchmark 等との突合実験を予定。
 
-## デプロイメントパイプライン（GitHub Actions）
+## GitHub Actions（現状）
 
-1. **トリガー:** `main` ブランチへのマージ（または PR 作成時）
-2. **ステップ:**
-   - **Lint & Test:** Go の静的解析（`golangci-lint`）とユニットテスト
-   - **Security Scan:** Trivy によるファイルシステムおよびコンテナイメージのスキャン
-   - **SBOM Generation:** SBOM アーティファクトの生成と保存
-   - **Deploy to Render:** Render API / Deploy Hook を利用した自動デプロイ
+| ワークフロー | 起動 | 内容 |
+| --- | --- | --- |
+| `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、coverage Artifact |
+| `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | イメージビルド・non-root・Trivy image・SBOM（**Render デプロイは未接続**） |
 
-## 初期リリース仕様（PoC スコープ）
+デプロイ方針:
+
+- `main` へのマージだけでは Render へデプロイしない。
+- 将来は `main` から切ったリリースタグ（`v0.00.00` 形式）を手動 Actions でデプロイする。
+
+テスト結果は Actions のログおよび Artifacts に残す（外部ダッシュボードは初期導入しない）。詳細は [docs/security-test-plan.md](docs/security-test-plan.md)。
+
+## 初期リリース仕様（PoC）
 
 ### 機能要件
 
 - **エンドポイント:** `GET /`
 - **動作仕様:**
-  1. Render 上の PostgreSQL に接続する。
-  2. 事前登録された `"Hello World"` 文字列を DB から取得する。
-  3. JSON 形式またはプレーンテキストとしてレスポンスを返却する。
+  1. 同梱 CSV（`backend/data/messages.csv`）からメッセージを取得する。
+  2. `"Hello World"` を JSON（`{"message":"Hello World"}`）で返す。
 
-### データベース初期化
+### ローカル起動（Docker）
 
-マイグレーションスクリプトまたは初回起動時処理により、テーブル作成と初期データ（`message = "Hello World"`）のインサートを自動化する。
+```bash
+cd backend
+docker compose up --build
+curl http://localhost:8080/
+```
+
+環境変数（任意）: `ADDR`（既定 `:8080`）、`DATA_CSV_PATH`（コンテナ内既定 `/app/data/messages.csv`）。
 
 ## 検証ロードマップ
 
-- **Phase 1（初期リリース）:** Docker 化、GitHub Actions による Render への自動デプロイ、Trivy スキャンの導入。
-- **Phase 2（サプライチェーン強化）:** SBOM の自動生成・アーティファクト保管の仕組み化。
-- **Phase 3（コンプライアンス拡張）:** SCAP / セキュリティポリシーのコード化（Policy as Code）および監査ログの収集実験。
+- **Phase 1:** Docker 化、backend の Verify / Pre-Deploy Actions、Trivy 導入（進行中。Render デプロイ接続が残作業）
+- **Phase 2:** SBOM 運用の定着、依存スキャンの継続監視
+- **Phase 3:** SCAP / Policy as Code、監査ログ収集の実験

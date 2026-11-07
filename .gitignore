@@ -1,0 +1,54 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors / IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Cursor / local agent noise
+.cursor/
+.pr-body.md
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Go (backend)
+backend/bin/
+backend/dist/
+backend/coverage.out
+backend/coverage.html
+backend/*.test
+backend/*.exe
+backend/*.out
+**/__debug_bin*
+
+# Frontend (future Node / bundler)
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/coverage/
+frontend/.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / scan reports (local)
+*.sarif
+*-trivy-*.txt
+*-sbom*.json
+coverage.out
+coverage.html
+
+# Docker
+*.log
