@@ -10,35 +10,40 @@
 - **コンテキスト単位:** 機能ごとに `user` / `message` などのパッケージを切る（レイヤー横断で同じ名前空間を揃える）。
 - **依存の方向:** `handler` → `usecase` → `domain` ← `infrastructure`（infrastructure が domain のインターフェースを実装）。
 - **domain は外部依存ゼロ:** DB・HTTP・CSV ライブラリなどに依存しない。
-- **DI は起動時のみ:** 依存注入は `cmd/server/main.go` に集約する。
+- **DI は起動時のみ:** 依存注入は `backend/cmd/server/main.go` に集約する。
+- **モノレポ:** Go コードは `backend/` 配下に置き、将来の `frontend/` と同居できる構成にする。
 - **公開範囲:** アプリ固有コードは原則 `internal/` 配下に置く。汎用ライブラリ化する予定がなければ `pkg/` は使わない。
 
 ## ディレクトリ構成
 
 ```text
 WhiteKey-Experimentation-Site/
-├── cmd/
-│   └── server/
-│       └── main.go                 # 依存注入（DI）とサーバー起動
-├── internal/
-│   ├── domain/                     # ビジネスルール（外部依存ゼロ）
-│   │   └── user/
-│   │       ├── user.go             # エンティティ・値オブジェクト
-│   │       └── repository.go       # リポジトリのインターフェース
-│   ├── usecase/                    # アプリケーションロジック
-│   │   └── user/
-│   │       └── usecase.go          # ユースケース実装
-│   ├── infrastructure/             # 技術的詳細・外部依存
-│   │   ├── persistence/
-│   │   │   └── user_repo.go        # 永続化の実装（CSV / RDB 等）
-│   │   └── config/
-│   └── handler/                    # HTTP 等のエントリポイント
-│       └── http/
-│           └── user_handler.go
-├── data/                           # 同梱データ（CSV 仮想 DB 等）※本プロジェクト方針
-├── docs/
-├── go.mod
-└── go.sum
+├── backend/                        # Go API（将来の frontend/ と並べる）
+│   ├── cmd/
+│   │   └── server/
+│   │       └── main.go             # 依存注入（DI）とサーバー起動
+│   ├── internal/
+│   │   ├── domain/                 # ビジネスルール（外部依存ゼロ）
+│   │   │   └── user/
+│   │   │       ├── user.go         # エンティティ・値オブジェクト
+│   │   │       └── repository.go   # リポジトリのインターフェース
+│   │   ├── usecase/                # アプリケーションロジック
+│   │   │   └── user/
+│   │   │       └── usecase.go      # ユースケース実装
+│   │   ├── infrastructure/         # 技術的詳細・外部依存
+│   │   │   ├── persistence/
+│   │   │   │   └── user_repo.go    # 永続化の実装（CSV / RDB 等）
+│   │   │   └── config/
+│   │   └── handler/                # HTTP 等のエントリポイント
+│   │       └── http/
+│   │           └── user_handler.go
+│   ├── data/                       # 同梱データ（CSV 仮想 DB 等）
+│   ├── Dockerfile
+│   ├── docker-compose.yml          # ローカル起動（backend）
+│   ├── go.mod
+│   └── go.sum
+├── frontend/                       # （将来）フロントエンド
+└── docs/
 ```
 
 PoC（`GET /` で `"Hello World"` を返す）では、上記の `user` コンテキストに相当するものとして `message` コンテキストを置く想定。レイヤー分割の型は同じである。
@@ -230,13 +235,13 @@ func main() {
 | エンドポイント | `GET /` |
 | ユースケース例 | CSV からメッセージを取得して返す |
 | 永続化 | `internal/infrastructure/persistence` の CSV 実装 |
-| データ正本 | リポジトリ同梱 CSV（例: `data/messages.csv`） |
+| データ正本 | リポジトリ同梱 CSV（例: `backend/data/messages.csv`） |
 
 依存の流れ（PoC）:
 
 ```text
-cmd/server
-  → handler/http (GET /)
+backend/cmd/server
+  → backend/internal/handler/http (GET /)
     → usecase/message
       → domain/message (Entity + Repository IF)
       ← infrastructure/persistence (CSV Repository 実装)
@@ -252,8 +257,8 @@ cmd/server
 
 ## 今後の実装メモ
 
-- [ ] `go.mod` のモジュールパス確定
-- [ ] `cmd/server/main.go` のスケルトン作成
-- [ ] PoC 用 `message` コンテキスト（domain / usecase / handler / CSV persistence）
-- [ ] `data/messages.csv` の追加
+- [x] `backend/go.mod` のモジュールパス確定（`.../backend`）
+- [x] `backend/cmd/server/main.go` のスケルトン作成
+- [x] PoC 用 `message` コンテキスト（domain / usecase / handler / CSV persistence）
+- [x] `backend/data/messages.csv` の追加
 - [ ] レイヤー境界を崩さないための簡易テスト（domain / usecase 中心）

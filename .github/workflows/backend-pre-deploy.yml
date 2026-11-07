@@ -1,0 +1,108 @@
+# Build and security-scan the backend image.
+# Render deploy is intentionally omitted until Render.com is ready.
+name: Backend Pre-Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (branch, tag like v0.00.01, or SHA). Empty = current branch tip."
+        required: false
+        default: ""
+
+concurrency:
+  group: backend-pre-deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: whitekey-api:ci
+
+jobs:
+  build-and-scan:
+    name: Build Image and Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: backend/go.mod
+
+      - name: Run tests
+        working-directory: backend
+        run: go test -v -coverprofile=coverage.out ./...
+
+      - name: Upload test coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-pre-deploy-coverage
+          path: backend/coverage.out
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Build Docker image
+        run: docker build -t "${IMAGE_NAME}" ./backend
+
+      - name: Verify non-root user
+        run: |
+          set -euo pipefail
+          user="$(docker image inspect "${IMAGE_NAME}" --format '{{.Config.User}}')"
+          echo "Config.User=${user}"
+          if [ -z "${user}" ] || [ "${user}" = "0" ] || [ "${user}" = "root" ]; then
+            echo "Container image must run as non-root user" >&2
+            exit 1
+          fi
+          uid="$(docker run --rm --entrypoint id "${IMAGE_NAME}" -u)"
+          echo "Runtime uid=${uid}"
+          if [ "${uid}" = "0" ]; then
+            echo "Container process must not run as uid 0" >&2
+            exit 1
+          fi
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_NAME }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          format: table
+          output: backend-trivy-image.txt
+          ignore-unfixed: true
+
+      - name: Generate SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_NAME }}
+          format: cyclonedx
+          output: backend-sbom.cdx.json
+          exit-code: "0"
+
+      - name: Upload scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-pre-deploy-security
+          path: |
+            backend-trivy-image.txt
+            backend-sbom.cdx.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Summary (no Render deploy)
+        run: |
+          echo "Pre-deploy checks finished."
+          echo "Render deploy step is skipped until Render.com setup is ready."
+          echo "Image built: ${IMAGE_NAME}"
+          echo "Ref: ${{ inputs.ref || github.ref }}"
