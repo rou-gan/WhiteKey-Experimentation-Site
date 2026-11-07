@@ -1,0 +1,44 @@
+---
+description: テストの追加・更新・削除を表にまとめ、PR本文に掲載する
+alwaysApply: true
+---
+
+# テスト変更の PR 掲載ルール
+
+このリポジトリでテストを **作成・更新・削除** した場合、およびそれらを含むプルリクエストを作成・更新する場合は、次を行う。
+
+1. テスト変更内容を Markdown の表にまとめる。
+2. その表を **PR 本文** に掲載する（作業報告時はチャット側の要約にも載せる）。
+
+## 表形式
+
+次の列を使う。
+
+| 変更 | パス | テスト / 観点 | 備考 |
+| --- | --- | --- | --- |
+| 追加 / 更新 / 削除 | ファイルパス | テスト名またはスイートの観点 | 短い理由 |
+
+- **変更**: `追加` / `更新` / `削除` のいずれか
+- **パス**: リポジトリ相対パス（例: `backend/internal/domain/message/message_test.go`）
+- **テスト / 観点**: 関数名、テーブルケース名、またはスイートの簡潔な説明
+- **備考**: 一文程度（セキュリティ観点、回帰防止、リファクタなど）
+
+同一ファイルでも観点が異なる場合は、行を分けて記載する。
+
+## 記載例
+
+```markdown
+### テスト変更
+
+| 変更 | パス | テスト / 観点 | 備考 |
+| --- | --- | --- | --- |
+| 追加 | `backend/internal/handler/http/message_handler_test.go` | `TestMessageHandler_GetRoot_ErrorDoesNotLeakInternals` | 情報漏洩防止 |
+| 更新 | `backend/internal/usecase/message/usecase_test.go` | `TestUseCase_GetByID_Success` | 返却内容の検証を追加 |
+| 削除 | `backend/internal/domain/message/message_test.go` | `TestNewMessage_Legacy` | テーブルテストへ置換 |
+```
+
+## 適用範囲
+
+- 本リポジトリ専用（`.cursor/rules/` のプロジェクトルール）。
+- 主に `backend/**/*_test.go` を対象とする。将来のフロントエンドテストも同じ表形式で掲載する。
+- PR にテストファイルの変更が無い場合は表を載せない（空の行を捏造しない）。
