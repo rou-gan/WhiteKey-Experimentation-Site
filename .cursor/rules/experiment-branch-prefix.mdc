@@ -1,0 +1,31 @@
+---
+description: 実験用ブランチのプレフィックスは experiment/ にする
+alwaysApply: true
+---
+
+# 実験用ブランチの命名
+
+検証・わざと壊す・一時的な技術実験など、通常の機能開発ではない作業では、ブランチ名を次のプレフィックスで切る。
+
+```text
+experiment/<短い内容>
+```
+
+## 例
+
+```text
+experiment/trivy-go-downgrade
+experiment/scap-poc
+```
+
+## 使い分け
+
+| プレフィックス | 用途 |
+| --- | --- |
+| `experiment/` | 実験・検証・意図的な失敗確認 |
+| `feature/` | 本番／本線に入れる機能開発 |
+
+## 注意
+
+- 実験ブランチはマージ前提にしないことが多い。終了後は削除してよい。
+- `Backend Verify` の push トリガーは現状 `feature/**` 中心。`experiment/**` で CI を回す場合は PR 作成、または workflow の `branches` に `experiment/**` を足す。
