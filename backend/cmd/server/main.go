@@ -18,9 +18,12 @@ func main() {
 	repo := persistence.NewMessageCSVRepository(csvPath)
 	uc := messageuc.NewUseCase(repo)
 	h := handlerhttp.NewMessageHandler(uc)
+	xssH := handlerhttp.NewXSSExperimentHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.GetRoot)
+	// EXPERIMENT: intentional reflected-XSS surface for unit-test gate drills.
+	mux.HandleFunc("/experiment/greet", xssH.Greet)
 
 	server := &http.Server{
 		Addr:              addr,
