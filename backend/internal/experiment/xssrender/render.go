@@ -1,10 +1,10 @@
 package xssrender
 
+import "html"
+
 // RenderGreeting builds a tiny HTML fragment that greets the caller.
-//
-// EXPERIMENT (intentionally unsafe): user-controlled name is concatenated
-// into HTML without escaping. A secure implementation must use
-// html.EscapeString (or equivalent) before embedding into markup.
+// User-controlled name is HTML-escaped before embedding into markup
+// to prevent reflected XSS.
 func RenderGreeting(name string) string {
-	return "<h1>Hello, " + name + "</h1>"
+	return "<h1>Hello, " + html.EscapeString(name) + "</h1>"
 }
