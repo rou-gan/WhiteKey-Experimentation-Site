@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   verify:
-    name: Lint, Test, Dependency Scan, SBOM
+    name: Lint, Test, Scan, Syft SBOM, Grype Audit
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -77,20 +77,31 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: Generate SBOM (CycloneDX)
-        uses: aquasecurity/trivy-action@v0.36.0
+      - name: Generate SBOM with Syft (CycloneDX)
+        uses: anchore/sbom-action@v0.24.3
         with:
-          scan-type: fs
-          scan-ref: backend
-          format: cyclonedx
-          output: backend-sbom.cdx.json
-          exit-code: "1"
+          path: backend
+          format: cyclonedx-json
+          output-file: backend-sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
 
-      - name: Upload SBOM
+      - name: Audit SBOM with Grype
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: backend-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+          output-file: backend-grype-sbom.txt
+
+      - name: Upload Syft SBOM and Grype audit
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-sbom
-          path: backend-sbom.cdx.json
+          name: backend-sbom-audit
+          path: |
+            backend-sbom.cdx.json
+            backend-grype-sbom.txt
           if-no-files-found: warn
           retention-days: 14
