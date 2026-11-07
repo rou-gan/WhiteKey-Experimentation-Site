@@ -1,0 +1,78 @@
+name: Backend Verify
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-verify.yml"
+  push:
+    branches:
+      - main
+      - "feature/**"
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-verify.yml"
+
+concurrency:
+  group: backend-verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, Test, Dependency Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: backend/go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61.0
+          working-directory: backend
+          args: --timeout=5m
+
+      - name: Run tests
+        run: go test -v -coverprofile=coverage.out ./...
+
+      - name: Upload test coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-coverage
+          path: backend/coverage.out
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: backend
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          format: table
+          output: backend-trivy-fs.txt
+          ignore-unfixed: true
+
+      - name: Upload Trivy filesystem report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-trivy-fs
+          path: backend-trivy-fs.txt
+          if-no-files-found: warn
+          retention-days: 14

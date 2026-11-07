@@ -1,0 +1,12 @@
+.git
+.github
+docs
+**/*_test.go
+*.md
+.cursor
+agent-transcripts
+terminals
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose*.yml

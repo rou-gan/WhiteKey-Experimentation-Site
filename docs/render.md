@@ -161,8 +161,9 @@ git push origin v0.00.01
 
 - [ ] Render Web Service の作成手順の確定（リージョン・プラン）。PostgreSQL は使わない
 - [ ] `Dockerfile` および CSV 読み取りによる API 実装
-- [ ] 初期データ用 CSV（例: `data/messages.csv`）の追加
-- [ ] GitHub Actions: PR 用の検証ワークフロー
-- [ ] GitHub Actions: `workflow_dispatch` によるタグ指定デプロイワークフロー
+- [ ] 初期データ用 CSV（例: `backend/data/messages.csv`）の追加
+- [x] GitHub Actions: PR 用の検証ワークフロー（`backend-verify.yml`）
+- [x] GitHub Actions: デプロイ前のビルド／スキャン（`backend-pre-deploy.yml`、Render デプロイは未接続）
+- [ ] GitHub Actions: Render へのデプロイステップ追加（Deploy Hook）
 - [ ] `RENDER_DEPLOY_HOOK_URL`（および必要なら Render API 用 Secret）の設定
 - [ ] README を「手動リリースタグデプロイ」「CSV 仮想 DB」に合わせて更新
