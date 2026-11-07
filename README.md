@@ -28,7 +28,7 @@ WhiteKey-Experimentation-Site/
 
 ```text
 [GitHub Repository]
-       ↓ (PR / push: backend/**)
+       ↓ (PR、または main への push: backend/**)
 [GitHub Actions — Backend Verify]
        ├── golangci-lint (+ gosec)
        ├── go test (+ coverage Artifact)
@@ -87,7 +87,7 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 | ワークフロー | 起動 | 内容 |
 | --- | --- | --- |
-| `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、Syft SBOM、Grype 監査、coverage Artifact |
+| `Backend Verify` | PR、または `main` への push（`backend/**`） | Lint、Test、Trivy FS、Syft SBOM、Grype 監査、coverage Artifact |
 | `Backend Release Assets` | タグ push（`v*.*.*`） | タグ検証、image ビルド／スキャン、**GitHub Release へ成果物添付** |
 | `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | デプロイ前ゲート（**Render デプロイは未接続**） |
 

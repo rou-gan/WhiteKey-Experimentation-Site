@@ -28,4 +28,4 @@ experiment/scap-poc
 ## 注意
 
 - 実験ブランチはマージ前提にしないことが多い。終了後は削除してよい。
-- `Backend Verify` の push トリガーは現状 `feature/**` 中心。`experiment/**` で CI を回す場合は PR 作成、または workflow の `branches` に `experiment/**` を足す。
+- `Backend Verify` は feature / experiment では **PR 作成時のみ**動く（ブランチへの push だけでは動かない。二重起動防止）。

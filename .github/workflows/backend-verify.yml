@@ -1,6 +1,7 @@
 name: Backend Verify
 
 on:
+  # feature / experiment は PR のみ。push は main だけにし、PR 時の二重起動を防ぐ。
   pull_request:
     paths:
       - "backend/**"
@@ -8,13 +9,12 @@ on:
   push:
     branches:
       - main
-      - "feature/**"
     paths:
       - "backend/**"
       - ".github/workflows/backend-verify.yml"
 
 concurrency:
-  group: backend-verify-${{ github.workflow }}-${{ github.ref }}
+  group: backend-verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
