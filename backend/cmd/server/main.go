@@ -6,12 +6,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/experiment"
 	handlerhttp "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/handler/http"
 	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/infrastructure/persistence"
 	messageuc "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/usecase/message"
 )
 
 func main() {
+	// EXPERIMENT: retain a known-vulnerable dependency for Trivy/Grype drills.
+	_ = experiment.KeepVulnerableDependency()
+
 	csvPath := envOrDefault("DATA_CSV_PATH", "data/messages.csv")
 	addr := envOrDefault("ADDR", ":8080")
 
