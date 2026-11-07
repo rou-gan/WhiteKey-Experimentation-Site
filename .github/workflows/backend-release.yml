@@ -1,0 +1,144 @@
+# Create a GitHub Release for a version tag and attach security artifacts.
+# Artifacts are regenerated for the tag (not copied from PR Action Artifacts).
+name: Backend Release Assets
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: backend-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  IMAGE_NAME: whitekey-api:release
+  ASSET_DIR: release-assets
+
+jobs:
+  release:
+    name: Build, Scan, Attach Release Assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref }}
+
+      - name: Validate tag format and main ancestry
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          echo "Tag=${tag}"
+
+          if [[ ! "${tag}" =~ ^v[0-9]{1,2}\.[0-9]{2}\.[0-9]{2}$ ]]; then
+            echo "Tag must match vMAJOR.MINOR.PATCH with zero-padded minor/patch (e.g. v0.00.01)" >&2
+            exit 1
+          fi
+
+          git fetch origin main
+          tag_sha="$(git rev-parse HEAD)"
+          if ! git merge-base --is-ancestor "${tag_sha}" origin/main; then
+            echo "Tag commit ${tag_sha} is not an ancestor of origin/main" >&2
+            exit 1
+          fi
+          echo "Tag points to a commit on main history."
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          cache-dependency-path: backend/go.mod
+
+      - name: Run tests
+        working-directory: backend
+        run: go test -v -coverprofile=coverage.out ./...
+
+      - name: Build Docker image
+        run: docker build -t "${IMAGE_NAME}" ./backend
+
+      - name: Verify non-root user
+        run: |
+          set -euo pipefail
+          user="$(docker image inspect "${IMAGE_NAME}" --format '{{.Config.User}}')"
+          echo "Config.User=${user}"
+          if [ -z "${user}" ] || [ "${user}" = "0" ] || [ "${user}" = "root" ]; then
+            echo "Container image must run as non-root user" >&2
+            exit 1
+          fi
+          uid="$(docker run --rm --entrypoint id "${IMAGE_NAME}" -u)"
+          echo "Runtime uid=${uid}"
+          if [ "${uid}" = "0" ]; then
+            echo "Container process must not run as uid 0" >&2
+            exit 1
+          fi
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_NAME }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          format: table
+          output: backend-trivy-image.txt
+          ignore-unfixed: true
+
+      - name: Generate SBOM with Syft (CycloneDX)
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          format: cyclonedx-json
+          output-file: backend-sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Audit SBOM with Grype
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: backend-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+          output-file: backend-grype-sbom.txt
+
+      - name: Stage release assets
+        run: |
+          set -euo pipefail
+          mkdir -p "${ASSET_DIR}"
+          tag="${GITHUB_REF_NAME}"
+          cp backend-sbom.cdx.json "${ASSET_DIR}/${tag}-backend-sbom.cdx.json"
+          cp backend-grype-sbom.txt "${ASSET_DIR}/${tag}-backend-grype-sbom.txt"
+          cp backend-trivy-image.txt "${ASSET_DIR}/${tag}-backend-trivy-image.txt"
+          ls -la "${ASSET_DIR}"
+
+      - name: Upload workflow artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-release-security
+          path: |
+            backend-sbom.cdx.json
+            backend-grype-sbom.txt
+            backend-trivy-image.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Create GitHub Release and attach assets
+        uses: softprops/action-gh-release@v3.0.4
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ${{ env.ASSET_DIR }}/${{ github.ref_name }}-backend-sbom.cdx.json
+            ${{ env.ASSET_DIR }}/${{ github.ref_name }}-backend-grype-sbom.txt
+            ${{ env.ASSET_DIR }}/${{ github.ref_name }}-backend-trivy-image.txt
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -34,16 +34,16 @@ WhiteKey-Experimentation-Site/
        ├── Syft SBOM (CycloneDX)
        └── Grype による SBOM 突き合わせ監査
                 ↓
-[人間] リリースタグ作成 (例: v0.00.01) + Actions 手動実行
+[人間] main からリリースタグ作成・push (例: v0.00.01)
        ↓
-[GitHub Actions — Backend Pre-Deploy]
-       ├── go test
-       ├── Docker image build
-       ├── non-root 構成チェック
-       ├── Trivy image scan
-       ├── Syft SBOM (CycloneDX / image)
-       └── Grype による SBOM 突き合わせ監査
-                ↓ （Render 接続後）
+[GitHub Actions — Backend Release Assets]（タグ push で自動）
+       ├── タグ形式 / main 由来の確認
+       ├── test / image build / non-root
+       ├── Trivy image / Syft SBOM / Grype 監査
+       └── GitHub Release に成果物を添付
+                ↓
+[人間] Backend Pre-Deploy を手動実行（デプロイ前ゲート）
+       ↓ （Render 接続後）
 [Render.com]
        └── Go API Server (Docker / CSV 同梱)
 ```
@@ -70,9 +70,11 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 ### SBOM（Software Bill of Materials）と突き合わせ監査
 
-- **生成（Syft）:** CycloneDX JSON を生成する（Verify は `backend/`、Pre-Deploy はコンテナイメージ）。
+- **生成（Syft）:** CycloneDX JSON を生成する（Verify は `backend/`、Release / Pre-Deploy はコンテナイメージ）。
 - **監査（Grype）:** 生成した SBOM を入力に脆弱性スキャンし、High 以上で失敗させる（SBOM とスキャン結果の突き合わせ）。
-- **保管:** `backend-sbom.cdx.json` と Grype レポートを Actions Artifacts に保存する。
+- **保管:**
+  - PR / 手動実行: Actions Artifacts（短期）
+  - タグ push: GitHub Release 資産として長期保管（そのタグ向けに再生成）
 - **補完:** Trivy による fs / image 直接スキャンも併用する。
 
 ### SCAP（Security Content Automation Protocol）
@@ -84,14 +86,16 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 | ワークフロー | 起動 | 内容 |
 | --- | --- | --- |
 | `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、Syft SBOM、Grype 監査、coverage Artifact |
-| `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | イメージビルド・non-root・Trivy image・Syft SBOM・Grype 監査（**Render デプロイは未接続**） |
+| `Backend Release Assets` | タグ push（`v*.*.*`） | タグ検証、image ビルド／スキャン、**GitHub Release へ成果物添付** |
+| `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | デプロイ前ゲート（**Render デプロイは未接続**） |
 
 デプロイ方針:
 
 - `main` へのマージだけでは Render へデプロイしない。
-- 将来は `main` から切ったリリースタグ（`v0.00.00` 形式）を手動 Actions でデプロイする。
+- リリースタグ（`v0.00.00` 形式）を `main` から作成して push すると、セキュリティ成果物付き Release が自動作成される。
+- Render へのデプロイは、将来 Pre-Deploy（または同等）を手動実行して行う。
 
-テスト結果は Actions のログおよび Artifacts に残す（外部ダッシュボードは初期導入しない）。詳細は [docs/security-test-plan.md](docs/security-test-plan.md)。
+テスト／スキャン結果は Actions のログ・Artifacts、およびリリースタグ時は Release 資産に残す（外部ダッシュボードは初期導入しない）。詳細は [docs/security-test-plan.md](docs/security-test-plan.md) / [docs/render.md](docs/render.md)。
 
 ## 初期リリース仕様（PoC）
 
