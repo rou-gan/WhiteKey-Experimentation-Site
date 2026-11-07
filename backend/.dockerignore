@@ -2,6 +2,7 @@
 .git
 .github
 **/*.md
+openapi/
 
 # Local compose / ignore files
 .dockerignore

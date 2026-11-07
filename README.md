@@ -11,6 +11,7 @@
 ```text
 WhiteKey-Experimentation-Site/
 ├── backend/                 # Go API（DDD 風レイヤー、Docker、CSV 仮想 DB）
+│   └── openapi/             # OpenAPI 仕様
 ├── frontend/                # フロントエンド（準備中）
 ├── docs/                    # 設計ドキュメント
 └── .github/workflows/       # backend 用 GitHub Actions
@@ -21,6 +22,7 @@ WhiteKey-Experimentation-Site/
 - デプロイ方針: [docs/render.md](docs/render.md)
 - Go アーキテクチャ: [docs/go-architecture.md](docs/go-architecture.md)
 - セキュリティテスト計画: [docs/security-test-plan.md](docs/security-test-plan.md)
+- OpenAPI: [backend/openapi/openapi.yaml](backend/openapi/openapi.yaml)
 
 ## システムアーキテクチャ
 
