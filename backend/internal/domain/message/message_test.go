@@ -7,6 +7,7 @@ import (
 	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/domain/message"
 )
 
+// 目的: 妥当な ID・本文で Message を生成できること。
 func TestNewMessage_Success(t *testing.T) {
 	t.Parallel()
 
@@ -22,6 +23,7 @@ func TestNewMessage_Success(t *testing.T) {
 	}
 }
 
+// 目的: 空の ID または本文をドメイン層で拒否すること。
 func TestNewMessage_RejectsEmptyValues(t *testing.T) {
 	t.Parallel()
 
@@ -29,16 +31,18 @@ func TestNewMessage_RejectsEmptyValues(t *testing.T) {
 		name    string
 		id      message.ID
 		content string
+		purpose string
 	}{
-		{name: "empty id", id: "", content: "Hello"},
-		{name: "empty content", id: "1", content: ""},
-		{name: "both empty", id: "", content: ""},
+		{name: "empty id", id: "", content: "Hello", purpose: "空 ID を拒否する"},
+		{name: "empty content", id: "1", content: "", purpose: "空本文を拒否する"},
+		{name: "both empty", id: "", content: "", purpose: "両方空でも拒否する"},
 	}
 
 	for _, tc := range cases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+			t.Log(tc.purpose)
 			msg, err := message.NewMessage(tc.id, tc.content)
 			if err == nil {
 				t.Fatal("expected error, got nil")
@@ -50,10 +54,10 @@ func TestNewMessage_RejectsEmptyValues(t *testing.T) {
 	}
 }
 
+// 目的: SQL/XSS 風の文字列も「コード」として弾かず、不透明なデータとして保持すること。
 func TestNewMessage_AcceptsSpecialCharactersAsData(t *testing.T) {
 	t.Parallel()
 
-	// Domain treats these as opaque data; they must not be rejected as "code".
 	payloads := []string{
 		"Hello'; DROP TABLE messages;--",
 		`<script>alert("xss")</script>`,

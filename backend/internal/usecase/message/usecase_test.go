@@ -23,6 +23,7 @@ func (s *stubRepo) FindByID(_ context.Context, id domain.ID) (*domain.Message, e
 	return s.msg, nil
 }
 
+// 目的: リポジトリから取得したメッセージをユースケースがそのまま返すこと。
 func TestUseCase_GetByID_Success(t *testing.T) {
 	t.Parallel()
 
@@ -45,6 +46,7 @@ func TestUseCase_GetByID_Success(t *testing.T) {
 	}
 }
 
+// 目的: リポジトリエラーを握りつぶさず呼び出し元へ伝播すること。
 func TestUseCase_GetByID_PropagatesRepositoryError(t *testing.T) {
 	t.Parallel()
 
@@ -60,10 +62,10 @@ func TestUseCase_GetByID_PropagatesRepositoryError(t *testing.T) {
 	}
 }
 
+// 目的: 悪意のある ID を解釈・改変せず、不透明値としてリポジトリへ転送すること。
 func TestUseCase_GetByID_ForwardsMaliciousIDAsOpaqueValue(t *testing.T) {
 	t.Parallel()
 
-	// Usecase must not interpret ID as a query/expression; it only forwards to repository.
 	malicious := `1'; DROP TABLE messages;--`
 	repo := &stubRepo{err: errors.New("not found")}
 	uc := usecase.NewUseCase(repo)

@@ -6,15 +6,15 @@ import (
 	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/experiment/xssrender"
 )
 
-// XSSExperimentHandler exposes an intentional reflected-XSS surface for
-// security-gate experiments. Do not merge to main without remediation.
+// XSSExperimentHandler serves HTML greetings used for XSS-escape drills
+// and security unit tests. User input is escaped before HTML embedding.
 type XSSExperimentHandler struct{}
 
 func NewXSSExperimentHandler() *XSSExperimentHandler {
 	return &XSSExperimentHandler{}
 }
 
-// Greet reflects ?name= into HTML via xssrender.RenderGreeting.
+// Greet embeds ?name= into HTML via xssrender.RenderGreeting (escaped).
 func (h *XSSExperimentHandler) Greet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)

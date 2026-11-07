@@ -22,7 +22,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.GetRoot)
-	// EXPERIMENT: intentional reflected-XSS surface for unit-test gate drills.
+	// HTML 埋め込み時のエスケープ（XSS 防止）を示す実験・教育用エンドポイント。
 	mux.HandleFunc("/experiment/greet", xssH.Greet)
 
 	server := &http.Server{

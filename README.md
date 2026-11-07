@@ -103,10 +103,13 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 ### 機能要件
 
-- **エンドポイント:** `GET /`
+- **エンドポイント:**
+  - `GET /` — CSV 既定メッセージを JSON で返す
+  - `GET /experiment/greet?name=` — 名前を埋め込んだ HTML 挨拶（埋め込み前に HTML エスケープ）
 - **動作仕様:**
   1. 同梱 CSV（`backend/data/messages.csv`）からメッセージを取得する。
   2. `"Hello World"` を JSON（`{"message":"Hello World"}`）で返す。
+  3. `/experiment/greet` はクエリ `name` を HTML へ埋め込む前にエスケープし、反射型 XSS を防ぐ（OpenAPI: [backend/openapi/openapi.yaml](backend/openapi/openapi.yaml)）。
 
 ### ローカル起動（Docker）
 
@@ -114,6 +117,7 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 cd backend
 docker compose up --build
 curl http://localhost:8080/
+curl "http://localhost:8080/experiment/greet?name=%E3%81%97%E3%82%8D%E3%81%8B%E3%81%8E"
 ```
 
 環境変数（任意）: `ADDR`（既定 `:8080`）、`DATA_CSV_PATH`（コンテナ内既定 `/app/data/messages.csv`）。
