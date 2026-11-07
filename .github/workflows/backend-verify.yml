@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   verify:
-    name: Lint, Test, Dependency Scan
+    name: Lint, Test, Dependency Scan, SBOM
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,5 +74,23 @@ jobs:
         with:
           name: backend-trivy-fs
           path: backend-trivy-fs.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Generate SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: backend
+          format: cyclonedx
+          output: backend-sbom.cdx.json
+          exit-code: "1"
+
+      - name: Upload SBOM
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-sbom
+          path: backend-sbom.cdx.json
           if-no-files-found: warn
           retention-days: 14
