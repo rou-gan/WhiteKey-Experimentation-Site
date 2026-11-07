@@ -10,8 +10,10 @@ Desktop.ini
 *.swo
 *~
 
-# Cursor / local agent noise
-.cursor/
+# Cursor / local agent noise (keep shared project rules)
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
 .pr-body.md
 
 # Environment and secrets
