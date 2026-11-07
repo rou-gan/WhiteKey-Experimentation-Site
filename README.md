@@ -22,6 +22,7 @@ WhiteKey-Experimentation-Site/
 - デプロイ方針: [docs/render.md](docs/render.md)
 - Go アーキテクチャ: [docs/go-architecture.md](docs/go-architecture.md)
 - セキュリティテスト計画: [docs/security-test-plan.md](docs/security-test-plan.md)
+- ローカルセキュリティ Agent: [docs/security-agent-threat-model.md](docs/security-agent-threat-model.md)
 - OpenAPI: [backend/openapi/openapi.yaml](backend/openapi/openapi.yaml)
 
 ## システムアーキテクチャ
@@ -98,6 +99,16 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 - Render へのデプロイは、将来 Pre-Deploy（または同等）を手動実行して行う。
 
 テスト／スキャン結果は Actions のログ・Artifacts、およびリリースタグ時は Release 資産に残す（外部ダッシュボードは初期導入しない）。詳細は [docs/security-test-plan.md](docs/security-test-plan.md) / [docs/render.md](docs/render.md)。
+
+## ローカルセキュリティレビュー（Phase A）
+
+Cursor Automations / クラウド Agent は使わない。**push または PR 作成の直後**に、手元の Cursor で `/review-security` を実行する（作成前は実行しない）。
+
+1. `/review-security`（`branch changes`、base は `main`）
+2. 指摘を Severity / Location / Finding でまとめる
+3. 該当 PR に `gh pr review --comment` で投稿する（`APPROVE` / `REQUEST_CHANGES` は使わない）
+
+必須のマージゲートは引き続き `Backend Verify`。脅威モデルと詳細手順は [docs/security-agent-threat-model.md](docs/security-agent-threat-model.md)。前提としてローカルで `gh auth status` が通っていること。
 
 ## 初期リリース仕様（PoC）
 
