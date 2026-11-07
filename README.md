@@ -30,7 +30,8 @@ WhiteKey-Experimentation-Site/
 [GitHub Actions — Backend Verify]
        ├── golangci-lint (+ gosec)
        ├── go test (+ coverage Artifact)
-       └── Trivy filesystem scan
+       ├── Trivy filesystem scan
+       └── SBOM Artifact (CycloneDX)
                 ↓
 [人間] リリースタグ作成 (例: v0.00.01) + Actions 手動実行
        ↓
@@ -67,7 +68,8 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 ### SBOM（Software Bill of Materials）
 
-- Pre-Deploy ワークフローで CycloneDX 形式の SBOM を生成し、Actions Artifacts に保存する。
+- **Backend Verify（PR / push）:** `backend/` のファイルシステムから CycloneDX SBOM を生成し Artifact 保存する。
+- **Backend Pre-Deploy（手動）:** コンテナイメージから CycloneDX SBOM を生成し Artifact 保存する。
 
 ### SCAP（Security Content Automation Protocol）
 
@@ -77,7 +79,7 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 | ワークフロー | 起動 | 内容 |
 | --- | --- | --- |
-| `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、coverage Artifact |
+| `Backend Verify` | PR / push（`backend/**`） | Lint、Test、Trivy FS、SBOM（CycloneDX）、coverage Artifact |
 | `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | イメージビルド・non-root・Trivy image・SBOM（**Render デプロイは未接続**） |
 
 デプロイ方針:

@@ -226,7 +226,7 @@ DDD 構成では、主に `domain` / `usecase` / `handler` にテストを配置
 ### 受け入れ条件
 
 - [ ] PR で依存関係スキャンが走る
-- [ ] SBOM が生成・保存される
+- [x] SBOM が生成・保存される（Verify: fs / Pre-Deploy: image）
 - [ ] Critical / High 検出時にジョブが失敗する
 
 ---
