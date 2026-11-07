@@ -19,7 +19,7 @@ func NewMessageCSVRepository(path string) domain.Repository {
 	return &messageCSVRepository{path: path}
 }
 
-func (r *messageCSVRepository) FindByID(ctx context.Context, id domain.ID) (*domain.Message, error) {
+func (r *messageCSVRepository) FindByID(ctx context.Context, id domain.ID) (msg *domain.Message, err error) {
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -34,7 +34,11 @@ func (r *messageCSVRepository) FindByID(ctx context.Context, id domain.ID) (*dom
 	if err != nil {
 		return nil, fmt.Errorf("open csv: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("close csv: %w", cerr)
+		}
+	}()
 
 	reader := csv.NewReader(f)
 	records, err := reader.ReadAll()
