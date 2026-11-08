@@ -7,8 +7,8 @@ type Props = {
 };
 
 /**
- * INTENTIONAL DOM XSS sink:
- * renderPreviewHTML の未エスケープ出力を dangerouslySetInnerHTML へ渡す。
+ * クエリ由来の文字列をエスケープ済み HTML 断片として埋め込む。
+ * （DOM XSS 実験ページ。埋め込み前エスケープは renderPreviewHTML が担当）
  */
 export function DomXssPreview({ html }: Props) {
   const markup = renderPreviewHTML(html);
@@ -16,7 +16,7 @@ export function DomXssPreview({ html }: Props) {
   return (
     <section
       aria-label="dom-xss-preview"
-      // eslint-disable-next-line react/no-danger -- 意図的な DOM XSS 実験シンク
+      // エスケープ済み断片の表示用。生のユーザー入力は渡さない。
       dangerouslySetInnerHTML={{ __html: markup }}
     />
   );
