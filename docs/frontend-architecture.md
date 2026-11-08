@@ -63,6 +63,13 @@ frontend/
 - backend `GET /` の JSON（`{"message":"..."}`）を取得して表示する。
 - 取得失敗時は汎用メッセージのみ（内部エラー詳細は出さない）。
 
+## セキュリティ実験（DOM XSS）
+
+- `lib/experiment/domxss/render.ts` … HTML 断片生成（意図的に未エスケープな実装を置く実験用）
+- `app/experiment/dom-xss` … クエリ `html` を `dangerouslySetInnerHTML` シンクへ渡すページ
+- UT: `lib/experiment/domxss/render.test.ts`（エスケープ必須。脆弱実装では失敗する）
+- `npm test`（Vitest）を Frontend Verify に含める
+
 ## ローカル起動
 
 ```bash
