@@ -1,14 +1,15 @@
 ---
-description: push/PR 作成直後にローカル /review-security を実行し、結果を該当 PR にレビューコメントする
+description: push/PR 作成直後にローカル /review-security と Semgrep を実行し、結果を該当 PR にレビューコメントする
 alwaysApply: true
 ---
 
 # ローカルセキュリティレビュー（Phase A）
 
 Automations・Cursor クラウド Agent・GitHub Actions からの Cursor CLI は使わない。  
-手元の Cursor で `/review-security` を回し、該当 PR に advisory なレビューコメントを残す。
+手元の Cursor で `/review-security` と Semgrep（Skills / CLI / MCP）を回し、該当 PR に advisory なレビューコメントを残す。
 
-脅威モデルの正本: `docs/security-agent-threat-model.md`
+脅威モデルの正本: `docs/security-agent-threat-model.md`  
+Semgrep 手順の正本: `.cursor/skills/semgrep-review/SKILL.md`
 
 ## いつ実行するか
 
@@ -20,23 +21,24 @@ push / PR 作成をこのチャットで行った（または完了を確認し�
 ## 手順
 
 1. `/review-security` 相当として `security-review` サブエージェントを起動する（`Diff: branch changes`、base はリポジトリの default / `main`）。カスタム指示がある場合は脅威モデル docs に従う旨を渡す。
-2. 指摘を Severity / Location / Finding の表にまとめる。指摘なしならその旨を書く。
-3. 現在ブランチの PR を特定する: `gh pr view --json number,url`
+2. Semgrep を実行する（Skill `semgrep-review`、MCP `semgrep_scan`、または CLI）。ルールセットは GHA と揃える: `p/security-audit`、`p/owasp-top-ten`、`p/golang`、`p/javascript`。対象は変更のあった `backend/` / `frontend/`（全体スキャンでも可）。
+3. `security-review` と Semgrep の指摘を Severity / Location / Finding の表にまとめる。Semgrep は要約のみ（同一 finding の長文は避ける）。指摘なしならその旨を書く。
+4. 現在ブランチの PR を特定する: `gh pr view --json number,url`
    - PR が無い、または `gh` 未認証ならコメントは投稿せず、チャットに理由を報告して終了する。
-4. レビュー本文をファイルに書き、次で投稿する（**COMMENT のみ**。`APPROVE` / `REQUEST_CHANGES` は使わない）:
+5. レビュー本文をファイルに書き、次で投稿する（**COMMENT のみ**。`APPROVE` / `REQUEST_CHANGES` は使わない）:
 
 ```bash
 gh pr review --comment --body-file <レビュー本文ファイル>
 ```
 
-5. 成功したら PR URL をチャットに返す。
+6. 成功したら PR URL をチャットに返す。
 
 ## やってはいけないこと
 
 - ユーザーが明示するまで、指摘の自動修正・自動コミットをしない
-- Agent レビュー結果でマージをブロックする（必須ゲートは `Backend Verify`）
+- Agent / ローカル Semgrep の結果でマージをブロックする（決定的ゲートは `Backend Verify` / `Frontend Verify` / GHA `Semgrep`）
 - Cursor Automations / クラウド Agent / Actions 上の Cursor CLI を導入する
-- CVE の再列挙やスタイル指摘でノイズを増やす（Trivy / gosec / test に任せる）
+- CVE の再列挙やスタイル指摘でノイズを増やす（Trivy / gosec / Grype / test に任せる）
 
 ## 実験コード
 

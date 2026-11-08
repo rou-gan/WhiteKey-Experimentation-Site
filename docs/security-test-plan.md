@@ -22,13 +22,14 @@
 | 区分 | 実行タイミング | 主な手段 | 失敗時の扱い |
 | --- | --- | --- | --- |
 | 静的解析（SAST） | PR / `main` push | `golangci-lint` + `gosec` | Critical 相当はブロック |
+| 静的解析（Semgrep） | PR / `main`（`backend/**`・`frontend/**`） | `semgrep scan --error`（レジストリルール） | findings でブロック（クラウド不要） |
 | ユニット／ハンドラテスト | PR / `main` push | `go test` | 失敗でブロック |
 | 依存関係スキャン | PR / リリース前 | Trivy（fs / go.mod） | Critical / High はブロック（方針確定後） |
 | SBOM | PR / リリース前 | Syft（CycloneDX） | 生成失敗はブロック |
 | SBOM 監査 | PR / リリース前 | Grype（SBOM 入力） | High 以上でブロック |
 | コンテナスキャン | リリースデプロイ前（手動 Actions） | Trivy（image） | Critical / High はデプロイブロック |
 | 構成チェック | リリースデプロイ前 | Dockerfile / イメージ検査 | non-root 未設定はブロック |
-| ローカル Agent レビュー | push / PR 作成**直後**（作成前は不可） | Cursor `/review-security` + `gh pr review --comment` | advisory（マージ非ブロック） |
+| ローカル Agent レビュー | push / PR 作成**直後**（作成前は不可） | Cursor `/review-security` + Semgrep Skills / CLI + `gh pr review --comment` | advisory（マージ非ブロック） |
 | Frontend 静的解析 / ビルド | PR / `main`（`frontend/**`） | ESLint、`next build` | 失敗でブロック |
 | Frontend 依存・SBOM | PR / リリース前 | Trivy FS、Syft、Grype | Critical / High でブロック |
 | Frontend コンテナスキャン | リリースデプロイ前（手動） | Trivy image、non-root | Critical / High でデプロイブロック |
@@ -47,12 +48,14 @@
 - GitHub Actions 上のセキュリティジョブ
 - 依存モジュール（`go.mod` / `go.sum`、`package-lock.json`）と SBOM
 - GHA 上の手動／週次 ZAP DAST（Baseline + OpenAPI パッシブ、High で失敗）
+- Semgrep（GHA 決定的ゲート + ローカル Phase A advisory）。Semgrep Cloud は必須としない
 
 ### Out of Scope（初期）
 
 - 本格的な DAST の常時稼働・PR ごとの必須ゲート化、フル activeScan の常設
 - ペネトレーションテストの外部委託
 - Render 無料枠を超える有料セキュリティ製品の必須化
+- Semgrep App / Guardian / 有料 AppSec プラットフォームの必須化
 - 認証・認可の本番相当実装（将来拡張としてモック／基礎テストのみ）
 - **外部のテスト／セキュリティダッシュボード**（Codecov、有料 SAST SaaS、GitHub Code scanning の本格運用など）
 
@@ -81,6 +84,7 @@ GitHub Actions 上で実行したテストやスキャンの結果は、初期�
 | SBOM 監査レポート | Grype の出力 | PR / リリース前 |
 | 脆弱性レポート | Trivy の出力ファイル | PR（依存）／リリース前（image） |
 | ZAP DAST レポート | `zap-report.html` / `zap-report.json` | 手動 / 週次 `ZAP DAST` |
+| Semgrep SARIF | `semgrep.sarif` | PR / `main` の `Semgrep` |
 
 - **設定イメージ:**
 
@@ -117,6 +121,7 @@ GitHub Actions 上で実行したテストやスキャンの結果は、初期�
 - 失敗理由が **Actions ログ**から追跡できる。
 - カバレッジおよび SBOM / スキャンレポートが **Artifacts** に残る（該当 Phase 導入後）。
 - 手動／週次の ZAP DAST で High アラート時に Actions が失敗し、レポートが Artifact に残る（Phase 5 導入後）。
+- Semgrep が PR / `main` で自動実行され、findings で失敗し、ローカル Phase A では Skills による advisory コメントが残る（Phase 6 導入後）。
 
 ---
 
@@ -302,6 +307,26 @@ Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Au
 
 ---
 
+## Phase 6: Semgrep Skills（Phase A）+ Semgrep CI（GHA）
+
+パターンベースの SAST を、ローカル advisory と GitHub Actions の決定的ゲートの二層で導入する。
+
+### 実装内容
+
+- GHA: [`.github/workflows/semgrep.yml`](../.github/workflows/semgrep.yml) で `semgrep scan --error`（`p/security-audit` / `p/owasp-top-ten` / `p/golang` / `p/javascript`）。クラウド不要。
+- ローカル: push / PR 直後に Semgrep Skills / CLI / MCP を実行し、`/review-security` コメントに要約を含める（[`.cursor/skills/semgrep-review/SKILL.md`](../.cursor/skills/semgrep-review/SKILL.md)）。
+- `.semgrepignore` で `node_modules` 等を除外。実験パスは初回スキャン対象のまま。
+
+### 受け入れ条件
+
+- [x] PR / `main` で Semgrep workflow が走る
+- [x] findings でジョブが失敗する（`--error`）
+- [x] SARIF が Artifact に残る
+- [x] Phase A 手順に Semgrep advisory が含まれる
+- [x] Semgrep Cloud を必須にしない
+
+---
+
 ## ロードマップと優先度
 
 ```text
@@ -314,6 +339,8 @@ Phase 3  Trivy + Syft SBOM + Grype 監査    … PR / リリースに拡張
 Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲート
     ↓
 Phase 5  ZAP DAST（手動／週次、High で失敗）… PR ゲート外
+    ↓
+Phase 6  Semgrep（GHA ゲート + Phase A Skills）
 ```
 
 | Phase | 目安 | 依存 |
@@ -323,12 +350,13 @@ Phase 5  ZAP DAST（手動／週次、High で失敗）… PR ゲート外
 | 3 | Phase 1 安定後 | Trivy / Syft の Actions 導入 |
 | 4 | Dockerfile 作成後 | 手動デプロイワークフロー |
 | 5 | frontend / backend コンテナ起動可能後 | ZAP AF plan + CI compose |
+| 6 | SAST 拡張時 | Semgrep registry + Phase A ルール |
 
 ## ツール一覧（予定）
 
 | 目的 | ツール |
 | --- | --- |
-| Lint / SAST | `golangci-lint`, `gosec`（backend）、ESLint（frontend） |
+| Lint / SAST | `golangci-lint`, `gosec`（backend）、ESLint（frontend）、Semgrep（backend + frontend） |
 | ユニットテスト | `go test`, `testing` / `net/http/httptest` |
 | Frontend ビルド | `next build`（standalone） |
 | 結果の一次確認 | GitHub Actions Jobs ログ |
@@ -355,11 +383,12 @@ Phase 5  ZAP DAST（手動／週次、High で失敗）… PR ゲート外
 Cursor Automations / クラウド Agent / Actions 上の Cursor CLI は使わない。
 
 1. push または PR 作成の**直後**に、手元で `/review-security`（`branch changes`、base `main`）を実行する。
-2. 脅威モデル（[security-agent-threat-model.md](./security-agent-threat-model.md)）に従い指摘をまとめる。
-3. `gh pr review --comment` で該当 PR にレビューコメントを残す（`APPROVE` / `REQUEST_CHANGES` は使わない）。
-4. マージ必須ゲートは従来どおり `Backend Verify`。
+2. 続けて Semgrep（Skill / CLI / MCP。手順は [`.cursor/skills/semgrep-review/SKILL.md`](../.cursor/skills/semgrep-review/SKILL.md)）を実行し、要約を指摘表に含める。
+3. 脅威モデル（[security-agent-threat-model.md](./security-agent-threat-model.md)）に従い指摘をまとめる。
+4. `gh pr review --comment` で該当 PR にレビューコメントを残す（`APPROVE` / `REQUEST_CHANGES` は使わない）。
+5. 決定的ゲートは `Backend Verify` / `Frontend Verify` / GHA `Semgrep`。ローカル結果は advisory。
 
-前提: ローカルで `gh auth status` が成功していること。PR が無い場合はコメントせずチャットに報告する。
+前提: ローカルで `gh auth status` が成功していること。PR が無い場合はコメントせずチャットに報告する。Semgrep CLI または Cursor Semgrep plugin があると Phase A の Semgrep が安定する。
 
 ## 今後の実装メモ
 
@@ -374,5 +403,7 @@ Cursor Automations / クラウド Agent / Actions 上の Cursor CLI は使わな
 - [ ] Critical / High ブロックポリシーの Actions への実装
 - [ ] README へのテスト／セキュリティゲート概要の追記
 - [x] ZAP DAST（Baseline + OpenAPI、手動／週次、High で失敗）（Phase 5）
+- [x] Semgrep GHA + Phase A Skills（Phase 6）
 - [ ] （将来）外部ダッシュボードやカバレッジ閾値の要否判断
 - [ ] （将来）ZAP activeScan や PR ゲート化の要否判断
+- [ ] （将来）Semgrep Cloud / Code Scanning 連携の要否判断

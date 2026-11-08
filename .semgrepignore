@@ -1,0 +1,19 @@
+# Semgrep ignore patterns (CI + local Phase A)
+node_modules/
+**/node_modules/
+.next/
+**/.next/
+dist/
+build/
+coverage/
+vendor/
+**/vendor/
+*.min.js
+*.min.css
+package-lock.json
+**/package-lock.json
+go.sum
+**/go.sum
+*.cdx.json
+*.sarif
+zap-out/

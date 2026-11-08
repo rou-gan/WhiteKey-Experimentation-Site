@@ -95,6 +95,7 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 | `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | デプロイ前ゲート（**Render デプロイは未接続**） |
 | `Frontend Pre-Deploy` | 手動（`workflow_dispatch`） | 同上（frontend） |
 | `ZAP DAST` | 手動（`workflow_dispatch`）、週次 schedule | runner 上で app 起動 → ZAP AF（Baseline + OpenAPI パッシブ）。**High で失敗**。PR マージゲートではない |
+| `Semgrep` | PR、または `main` への push（`backend/**` / `frontend/**`） | `semgrep scan --error`（security-audit / OWASP / Go / JS）。クラウド不要。findings で失敗 |
 
 デプロイ方針:
 
@@ -106,13 +107,14 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 ## ローカルセキュリティレビュー（Phase A）
 
-Cursor Automations / クラウド Agent は使わない。**push または PR 作成の直後**に、手元の Cursor で `/review-security` を実行する（作成前は実行しない）。
+Cursor Automations / クラウド Agent は使わない。**push または PR 作成の直後**に、手元の Cursor で `/review-security` と Semgrep（Skills / CLI）を実行する（作成前は実行しない）。
 
 1. `/review-security`（`branch changes`、base は `main`）
-2. 指摘を Severity / Location / Finding でまとめる
-3. 該当 PR に `gh pr review --comment` で投稿する（`APPROVE` / `REQUEST_CHANGES` は使わない）
+2. Semgrep（[`.cursor/skills/semgrep-review/SKILL.md`](.cursor/skills/semgrep-review/SKILL.md)。任意で `npx skills add semgrep/skills`）
+3. 指摘を Severity / Location / Finding でまとめる（Semgrep は要約）
+4. 該当 PR に `gh pr review --comment` で投稿する（`APPROVE` / `REQUEST_CHANGES` は使わない）
 
-必須のマージゲートは引き続き `Backend Verify`。脅威モデルと詳細手順は [docs/security-agent-threat-model.md](docs/security-agent-threat-model.md)。前提としてローカルで `gh auth status` が通っていること。
+決定的ゲートは `Backend Verify` / `Frontend Verify` / `Semgrep`。ローカルレビューは advisory。脅威モデルは [docs/security-agent-threat-model.md](docs/security-agent-threat-model.md)。前提としてローカルで `gh auth status` が通っていること。
 
 ## 初期リリース仕様（PoC）
 
