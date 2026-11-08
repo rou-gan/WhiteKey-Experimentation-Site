@@ -41,28 +41,33 @@ vMAJOR.MINOR.PATCH
 [リリース準備] main の先端（または特定コミット）にタグ付与して push
                 例: v0.00.01
                 ↓
-[GitHub Actions — Backend Release Assets]（タグ push で自動）
+[GitHub Actions — Backend / Frontend Release Assets]（同一タグ push で並列）
        ・タグ形式 / main 由来であることの確認
-       ・test / Docker build / non-root
+       ・各サービスの test/build / Docker / non-root
        ・Trivy image / Syft SBOM / Grype 監査
-       ・GitHub Release を作成し成果物を添付
+       ・同一 GitHub Release に各サービスの成果物を添付
                 ↓
-[人間] Backend Pre-Deploy を手動実行（デプロイ前ゲート）
+[人間] Backend / Frontend Pre-Deploy をそれぞれ手動実行（デプロイ前ゲート）
        ・入力: デプロイ対象タグ（例: v0.00.01）
-       ・将来: Render Deploy Hook / API でデプロイ要求
+       ・将来: 各 Deploy Hook / API でデプロイ要求
                 ↓
 [Render.com]
-       ・指定リビジョン（タグ）で Web Service をビルド・起動
-       ・CSV（仮想 DB）からデータを読み出し API を提供
+       ・Web Service（backend）: Go API / CSV
+       ・Web Service（frontend）: Next.js standalone（別コンテナ）
 ```
+
+同一タグで backend / frontend の両方をリリースする。サービスは **別コンテナ・別 Web Service・別 Deploy Hook**。
 
 ### Release に添付する成果物（タグ向けに再生成）
 
 | 資産名の例 | 内容 |
 | --- | --- |
-| `v0.00.01-backend-sbom.cdx.json` | Syft による CycloneDX SBOM |
-| `v0.00.01-backend-grype-sbom.txt` | Grype による SBOM 監査結果 |
-| `v0.00.01-backend-trivy-image.txt` | Trivy イメージスキャン結果 |
+| `v0.00.01-backend-sbom.cdx.json` | Syft による CycloneDX SBOM（backend） |
+| `v0.00.01-backend-grype-sbom.txt` | Grype による SBOM 監査結果（backend） |
+| `v0.00.01-backend-trivy-image.txt` | Trivy イメージスキャン結果（backend） |
+| `v0.00.01-frontend-sbom.cdx.json` | Syft による CycloneDX SBOM（frontend） |
+| `v0.00.01-frontend-grype-sbom.txt` | Grype による SBOM 監査結果（frontend） |
+| `v0.00.01-frontend-trivy-image.txt` | Trivy イメージスキャン結果（frontend） |
 
 PR の Actions Artifact は短期保管用。Release 資産はタグ時点の正本として長く残す。
 
@@ -72,12 +77,13 @@ PR の Actions Artifact は短期保管用。Release 資産はタグ時点の正
 
 | リソース | 用途 |
 | --- | --- |
-| Web Service | Go API Server（Docker コンテナ） |
-| CSV ファイル（仮想 DB） | `"Hello World"` メッセージなどのデータ永続化 |
+| Web Service（backend） | Go API Server（Docker コンテナ） |
+| Web Service（frontend） | Next.js standalone（**別** Docker コンテナ） |
+| CSV ファイル（仮想 DB） | backend 同梱の `"Hello World"` など |
 
 PostgreSQL などのマネージド DB は **採用しない**（理由は後述）。
 
-### Web Service（想定設定）
+### Web Service — backend（想定設定）
 
 | 項目 | 方針 |
 | --- | --- |
@@ -86,7 +92,19 @@ PostgreSQL などのマネージド DB は **採用しない**（理由は後述
 | Branch / Commit | 通常の「main 追従の自動デプロイ」は **無効** |
 | デプロイ契機 | GitHub Actions からの Deploy Hook / API 呼び出し |
 | データストア | コンテナ内（またはリポジトリ同梱）の CSV ファイル |
-| 環境変数 | CSV パスなど必要最小限（例: `DATA_CSV_PATH`）。DB 接続文字列は不要 |
+| 環境変数 | CSV パスなど必要最小限（例: `DATA_CSV_PATH`）。CORS 許可オリジン（例: `CORS_ALLOWED_ORIGINS`） |
+
+### Web Service — frontend（想定設定）
+
+| 項目 | 方針 |
+| --- | --- |
+| Runtime | Docker（Next.js `standalone`） |
+| Auto-Deploy | **Off**（backend と同じ） |
+| デプロイ契機 | Frontend Pre-Deploy → Deploy Hook（準備中） |
+| 環境変数 | `API_BASE_URL`（backend の公開 URL）、`PORT=3000`、`HOSTNAME=0.0.0.0` |
+| Secrets | `RENDER_FRONTEND_DEPLOY_HOOK_URL`（backend の Hook とは分離） |
+
+詳細は [frontend-architecture.md](./frontend-architecture.md)。
 
 ### データ永続化（CSV 仮想 DB）
 
@@ -134,12 +152,13 @@ PoC では RDB の代わりに CSV を「仮想 DB」として扱う。
 
 ダッシュボードで次を用意する。
 
-1. **Web Service** を作成する（Docker、リポジトリ連携）※ PostgreSQL は作成しない
-2. **Auto-Deploy を Off** にする（push 連動デプロイを使わない）
-3. 必要なら CSV パスなどの環境変数を設定する（例: `DATA_CSV_PATH`）
-4. **Deploy Hook URL** を発行する
-5. Deploy Hook URL を GitHub リポジトリの Secrets に登録する  
-   - 例: `RENDER_DEPLOY_HOOK_URL`
+1. **Web Service（backend）** と **Web Service（frontend）** をそれぞれ作成する（Docker）。PostgreSQL は作成しない
+2. 両方とも **Auto-Deploy を Off** にする
+3. backend: CSV パス・CORS オリジン等。frontend: `NEXT_PUBLIC_API_BASE_URL` 等
+4. 各サービスで **Deploy Hook URL** を発行する
+5. GitHub Secrets に登録する  
+   - backend: `RENDER_DEPLOY_HOOK_URL`  
+   - frontend: `RENDER_FRONTEND_DEPLOY_HOOK_URL`
 
 > Deploy Hook は秘密情報として扱い、Issue・PR・ドキュメント本文には書かない。
 
@@ -171,12 +190,13 @@ git push origin v0.00.01
 
 本ドキュメントは設計メモである。実装時には次をリポジトリへ追加する想定。
 
-- [ ] Render Web Service の作成手順の確定（リージョン・プラン）。PostgreSQL は使わない
-- [x] `Dockerfile` および CSV 読み取りによる API 実装
+- [ ] Render Web Service（backend / frontend）の作成手順の確定。PostgreSQL は使わない
+- [x] backend `Dockerfile` および CSV 読み取りによる API 実装
 - [x] 初期データ用 CSV（`backend/data/messages.csv`）の追加
 - [x] GitHub Actions: PR 用の検証ワークフロー（`backend-verify.yml`）
 - [x] GitHub Actions: デプロイ前のビルド／スキャン（`backend-pre-deploy.yml`、Render デプロイは未接続）
 - [x] GitHub Actions: タグ push で Release へセキュリティ成果物を添付（`backend-release.yml`）
-- [ ] GitHub Actions: Render へのデプロイステップ追加（Deploy Hook）
-- [ ] `RENDER_DEPLOY_HOOK_URL`（および必要なら Render API 用 Secret）の設定
+- [x] frontend Next.js スキャフォールド / Dockerfile / Verify・Release・Pre-Deploy
+- [ ] GitHub Actions: Render へのデプロイステップ追加（backend / frontend Deploy Hook）
+- [ ] `RENDER_DEPLOY_HOOK_URL` / `RENDER_FRONTEND_DEPLOY_HOOK_URL` の設定
 - [x] README を「手動リリースタグデプロイ」「CSV 仮想 DB」に合わせて更新

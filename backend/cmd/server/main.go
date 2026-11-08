@@ -27,7 +27,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              addr,
-		Handler:           mux,
+		Handler:           handlerhttp.CORS(mux),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

@@ -6,21 +6,22 @@
 
 ## リポジトリ構成
 
-モノレポ構成。Go API は `backend/`、将来のフロントエンドは `frontend/` に分離する。
+モノレポ構成。Go API は `backend/`、Next.js は `frontend/` に分離する（別コンテナ）。
 
 ```text
 WhiteKey-Experimentation-Site/
 ├── backend/                 # Go API（DDD 風レイヤー、Docker、CSV 仮想 DB）
 │   └── openapi/             # OpenAPI 仕様
-├── frontend/                # フロントエンド（準備中）
+├── frontend/                # Next.js（App Router、standalone Docker）
 ├── docs/                    # 設計ドキュメント
-└── .github/workflows/       # backend 用 GitHub Actions
+└── .github/workflows/       # backend / frontend 用 GitHub Actions
 ```
 
 詳細設計:
 
 - デプロイ方針: [docs/render.md](docs/render.md)
 - Go アーキテクチャ: [docs/go-architecture.md](docs/go-architecture.md)
+- Frontend アーキテクチャ: [docs/frontend-architecture.md](docs/frontend-architecture.md)
 - セキュリティテスト計画: [docs/security-test-plan.md](docs/security-test-plan.md)
 - ローカルセキュリティ Agent: [docs/security-agent-threat-model.md](docs/security-agent-threat-model.md)
 - OpenAPI: [backend/openapi/openapi.yaml](backend/openapi/openapi.yaml)
@@ -29,26 +30,25 @@ WhiteKey-Experimentation-Site/
 
 ```text
 [GitHub Repository]
-       ↓ (PR、または main への push: backend/**)
-[GitHub Actions — Backend Verify]
-       ├── golangci-lint (+ gosec)
-       ├── go test (+ coverage Artifact)
+       ↓ (PR / main: backend/** または frontend/**)
+[GitHub Actions — Backend Verify / Frontend Verify]
+       ├── lint / test or build
        ├── Trivy filesystem scan
        ├── Syft SBOM (CycloneDX)
        └── Grype による SBOM 突き合わせ監査
                 ↓
 [人間] main からリリースタグ作成・push (例: v0.00.01)
        ↓
-[GitHub Actions — Backend Release Assets]（タグ push で自動）
-       ├── タグ形式 / main 由来の確認
-       ├── test / image build / non-root
-       ├── Trivy image / Syft SBOM / Grype 監査
-       └── GitHub Release に成果物を添付
+[GitHub Actions — Backend / Frontend Release Assets]（同一タグで並列）
+       ├── タグ検証、image build / non-root
+       ├── Trivy image / Syft / Grype
+       └── 同一 GitHub Release へ各成果物を添付
                 ↓
-[人間] Backend Pre-Deploy を手動実行（デプロイ前ゲート）
+[人間] Backend / Frontend Pre-Deploy をそれぞれ手動実行
        ↓ （Render 接続後）
 [Render.com]
-       └── Go API Server (Docker / CSV 同梱)
+       ├── Web Service: Go API（Docker / CSV）
+       └── Web Service: Next.js（別 Docker / standalone）
 ```
 
 PostgreSQL などのマネージド DB は採用しない（無料枠の寿命・低コスト方針のため）。データはリポジトリ同梱の CSV を仮想 DB とする。詳細は [docs/render.md](docs/render.md)。
@@ -57,11 +57,11 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 
 | 領域 | 採用技術 |
 | --- | --- |
-| ホスティング | Render.com（Web Service）。デプロイ接続は準備中 |
-| Backend | Go（`net/http`）、Docker、CSV 仮想 DB |
-| Frontend | 準備中（`frontend/`） |
-| バージョン管理・CI/CD | GitHub / GitHub Actions（backend 検証は導入済み） |
-| セキュリティツール | golangci-lint / gosec、Trivy、Syft（SBOM）、Grype（SBOM 監査）。SCAP は今後 |
+| ホスティング | Render.com（backend / frontend 別 Web Service）。デプロイ接続は準備中 |
+| Backend | Go（`net/http`）、Docker、CSV 仮想 DB、CORS |
+| Frontend | Next.js（App Router）、TypeScript、standalone Docker |
+| バージョン管理・CI/CD | GitHub / GitHub Actions |
+| セキュリティツール | golangci-lint / gosec、ESLint、Trivy、Syft（SBOM）、Grype。SCAP は今後 |
 
 ## セキュリティ検証項目
 
@@ -89,14 +89,17 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 | ワークフロー | 起動 | 内容 |
 | --- | --- | --- |
 | `Backend Verify` | PR、または `main` への push（`backend/**`） | Lint、Test、Trivy FS、Syft SBOM、Grype 監査、coverage Artifact |
+| `Frontend Verify` | PR、または `main` への push（`frontend/**`） | ESLint、`next build`、Trivy FS、Syft SBOM、Grype 監査 |
 | `Backend Release Assets` | タグ push（`v*.*.*`） | タグ検証、image ビルド／スキャン、**GitHub Release へ成果物添付** |
+| `Frontend Release Assets` | タグ push（`v*.*.*`） | 同上（frontend 成果物を同一 Release へ添付） |
 | `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | デプロイ前ゲート（**Render デプロイは未接続**） |
+| `Frontend Pre-Deploy` | 手動（`workflow_dispatch`） | 同上（frontend） |
 
 デプロイ方針:
 
 - `main` へのマージだけでは Render へデプロイしない。
-- リリースタグ（`v0.00.00` 形式）を `main` から作成して push すると、セキュリティ成果物付き Release が自動作成される。
-- Render へのデプロイは、将来 Pre-Deploy（または同等）を手動実行して行う。
+- リリースタグ（`v0.00.00` 形式）を `main` から作成して push すると、backend / frontend のセキュリティ成果物付き Release が自動作成される。
+- Render へのデプロイは、将来各 Pre-Deploy を手動実行して行う（サービスごとに別 Deploy Hook）。
 
 テスト／スキャン結果は Actions のログ・Artifacts、およびリリースタグ時は Release 資産に残す（外部ダッシュボードは初期導入しない）。詳細は [docs/security-test-plan.md](docs/security-test-plan.md) / [docs/render.md](docs/render.md)。
 
@@ -131,10 +134,22 @@ curl http://localhost:8080/
 curl "http://localhost:8080/experiment/greet?name=%E3%81%97%E3%82%8D%E3%81%8B%E3%81%8E"
 ```
 
-環境変数（任意）: `ADDR`（既定 `:8080`）、`DATA_CSV_PATH`（コンテナ内既定 `/app/data/messages.csv`）。
+環境変数（任意）: `ADDR`（既定 `:8080`）、`DATA_CSV_PATH`（コンテナ内既定 `/app/data/messages.csv`）、`CORS_ALLOWED_ORIGINS`（例: `http://localhost:3000`）。
+
+### Frontend（Next.js）
+
+```bash
+cd frontend
+npm ci
+npm run dev
+# http://localhost:3000 — backend GET / の message を表示
+```
+
+環境変数（任意）: `API_BASE_URL` または `NEXT_PUBLIC_API_BASE_URL`（既定 `http://localhost:8080`）。詳細は [docs/frontend-architecture.md](docs/frontend-architecture.md)。
 
 ## 検証ロードマップ
 
 - **Phase 1:** Docker 化、backend の Verify / Pre-Deploy Actions、Trivy 導入（進行中。Render デプロイ接続が残作業）
 - **Phase 2:** Syft SBOM + Grype 突き合わせ監査の定着、依存スキャンの継続監視
+- **Phase 2.5:** frontend Next.js + Verify / Release / Pre-Deploy（Render 接続は準備中）
 - **Phase 3:** SCAP / Policy as Code、監査ログ収集の実験

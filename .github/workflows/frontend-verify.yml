@@ -1,0 +1,99 @@
+name: Frontend Verify
+
+on:
+  pull_request:
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-verify.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - ".github/workflows/frontend-verify.yml"
+
+concurrency:
+  group: frontend-verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, Build, Scan, Syft SBOM, Grype Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: frontend
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          format: table
+          output: frontend-trivy-fs.txt
+          ignore-unfixed: true
+
+      - name: Upload Trivy filesystem report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-trivy-fs
+          path: frontend-trivy-fs.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Generate SBOM with Syft (CycloneDX)
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          path: frontend
+          format: cyclonedx-json
+          output-file: frontend-sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Audit SBOM with Grype
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: frontend-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+          output-file: frontend-grype-sbom.txt
+
+      - name: Upload Syft SBOM and Grype audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-sbom-audit
+          path: |
+            frontend-sbom.cdx.json
+            frontend-grype-sbom.txt
+          if-no-files-found: warn
+          retention-days: 14
