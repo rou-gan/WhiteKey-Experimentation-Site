@@ -32,6 +32,7 @@
 | Frontend 静的解析 / ビルド | PR / `main`（`frontend/**`） | ESLint、`next build` | 失敗でブロック |
 | Frontend 依存・SBOM | PR / リリース前 | Trivy FS、Syft、Grype | Critical / High でブロック |
 | Frontend コンテナスキャン | リリースデプロイ前（手動） | Trivy image、non-root | Critical / High でデプロイブロック |
+| DAST（ZAP AF） | 手動 / 週次 | OWASP ZAP Automation Framework（Docker、Baseline + OpenAPI パッシブ） | High 以上でジョブ失敗（**PR マージゲートではない**） |
 
 デプロイ自体は人間主導のリリースタグ＋手動 Actions（[render.md](./render.md)）とし、**検証パイプラインとデプロイパイプラインを分離**する。
 
@@ -45,10 +46,11 @@
 - Dockerfile / コンテナイメージ（backend / frontend それぞれ）
 - GitHub Actions 上のセキュリティジョブ
 - 依存モジュール（`go.mod` / `go.sum`、`package-lock.json`）と SBOM
+- GHA 上の手動／週次 ZAP DAST（Baseline + OpenAPI パッシブ、High で失敗）
 
 ### Out of Scope（初期）
 
-- 本格的な DAST（動的攻撃スキャナの常時稼働）
+- 本格的な DAST の常時稼働・PR ごとの必須ゲート化、フル activeScan の常設
 - ペネトレーションテストの外部委託
 - Render 無料枠を超える有料セキュリティ製品の必須化
 - 認証・認可の本番相当実装（将来拡張としてモック／基礎テストのみ）
@@ -78,6 +80,7 @@ GitHub Actions 上で実行したテストやスキャンの結果は、初期�
 | SBOM | Syft の CycloneDX（`backend-sbom.cdx.json`） | PR / リリース前 |
 | SBOM 監査レポート | Grype の出力 | PR / リリース前 |
 | 脆弱性レポート | Trivy の出力ファイル | PR（依存）／リリース前（image） |
+| ZAP DAST レポート | `zap-report.html` / `zap-report.json` | 手動 / 週次 `ZAP DAST` |
 
 - **設定イメージ:**
 
@@ -113,6 +116,7 @@ GitHub Actions 上で実行したテストやスキャンの結果は、初期�
 - コンテナが非特権ユーザーで動作する方針が検査可能である。
 - 失敗理由が **Actions ログ**から追跡できる。
 - カバレッジおよび SBOM / スキャンレポートが **Artifacts** に残る（該当 Phase 導入後）。
+- 手動／週次の ZAP DAST で High アラート時に Actions が失敗し、レポートが Artifact に残る（Phase 5 導入後）。
 
 ---
 
@@ -270,6 +274,33 @@ Render へデプロイする直前のコンテナイメージに対し、セキ�
 
 ---
 
+## Phase 5: DAST（OWASP ZAP Automation Framework）
+
+Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Automation Framework で動的スキャンする。
+
+### 実装内容
+
+- 公式イメージ `ghcr.io/zaproxy/zaproxy:stable` で `zap.sh -cmd -autorun` を実行する。
+- スキャン深さは **Baseline 相当**（spider + パッシブ）＋ backend OpenAPI 取り込み。**activeScan は含めない**。
+- AF `exitStatus` の `errorLevel: High` により、High 以上のアラートでジョブを失敗させる（Medium 以下では落とさない）。
+- レポート（HTML / JSON）を Artifact に保存する。
+- **PR Verify やマージ必須ゲートにはしない**（手動 `workflow_dispatch` と週次 schedule）。
+
+設定の正本:
+
+- Workflow: [`.github/workflows/zap-dast.yml`](../.github/workflows/zap-dast.yml)
+- AF 計画: [`.github/zap/plan.yaml`](../.github/zap/plan.yaml)
+- CI 用 compose: [`.github/zap/docker-compose.yml`](../.github/zap/docker-compose.yml)
+
+### 受け入れ条件
+
+- [x] 手動／週次で ZAP DAST が実行できる
+- [x] High 以上で Actions が失敗する
+- [x] レポートが Artifact に残る
+- [x] PR マージゲートには組み込まない
+
+---
+
 ## ロードマップと優先度
 
 ```text
@@ -280,6 +311,8 @@ Phase 2  セキュリティ観点のユニットテスト … アプリ実装と
 Phase 3  Trivy + Syft SBOM + Grype 監査    … PR / リリースに拡張
     ↓
 Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲート
+    ↓
+Phase 5  ZAP DAST（手動／週次、High で失敗）… PR ゲート外
 ```
 
 | Phase | 目安 | 依存 |
@@ -288,6 +321,7 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 | 2 | PoC API（`GET /`）実装と同時 | domain / usecase / handler |
 | 3 | Phase 1 安定後 | Trivy / Syft の Actions 導入 |
 | 4 | Dockerfile 作成後 | 手動デプロイワークフロー |
+| 5 | frontend / backend コンテナ起動可能後 | ZAP AF plan + CI compose |
 
 ## ツール一覧（予定）
 
@@ -301,6 +335,7 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 | 依存・イメージスキャン | Trivy |
 | SBOM 生成 | Syft（`anchore/sbom-action`） |
 | SBOM 監査 | Grype（`anchore/scan-action`、SBOM 入力） |
+| DAST | OWASP ZAP（Automation Framework / Docker、手動・週次） |
 | CI | GitHub Actions |
 | デプロイ先 | Render.com（backend / frontend 別 Web Service） |
 
@@ -337,4 +372,6 @@ Cursor Automations / クラウド Agent / Actions 上の Cursor CLI は使わな
 - [ ] Dockerfile の non-root 化とイメージスキャン（Phase 4）
 - [ ] Critical / High ブロックポリシーの Actions への実装
 - [ ] README へのテスト／セキュリティゲート概要の追記
+- [x] ZAP DAST（Baseline + OpenAPI、手動／週次、High で失敗）（Phase 5）
 - [ ] （将来）外部ダッシュボードやカバレッジ閾値の要否判断
+- [ ] （将来）ZAP activeScan や PR ゲート化の要否判断

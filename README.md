@@ -94,6 +94,7 @@ PostgreSQL などのマネージド DB は採用しない（無料枠の寿命�
 | `Frontend Release Assets` | タグ push（`v*.*.*`） | 同上（frontend 成果物を同一 Release へ添付） |
 | `Backend Pre-Deploy` | 手動（`workflow_dispatch`） | デプロイ前ゲート（**Render デプロイは未接続**） |
 | `Frontend Pre-Deploy` | 手動（`workflow_dispatch`） | 同上（frontend） |
+| `ZAP DAST` | 手動（`workflow_dispatch`）、週次 schedule | runner 上で app 起動 → ZAP AF（Baseline + OpenAPI パッシブ）。**High で失敗**。PR マージゲートではない |
 
 デプロイ方針:
 
