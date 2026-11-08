@@ -70,6 +70,14 @@ frontend/
 - UT: `lib/experiment/domxss/render.test.ts`（エスケープ必須）
 - `npm test`（Vitest）を Frontend Verify に含める
 
+## セキュリティ実験（OS コマンドインジェクション）
+
+- `lib/experiment/cmdinject/ping.ts` … ping argv 組み立て（意図的に `sh -c` + 文字列連結）
+- `app/api/experiment/ping` … 組み立て結果を JSON で返す（フロントでは OS 実行しない）
+- `app/experiment/cmd-inject` … クエリ `host` の組み立て結果表示
+- UT: `lib/experiment/cmdinject/ping.test.ts`（シェルなし argv + メタ文字拒否を期待。脆弱実装では失敗）
+- backend 側の実行シンク: `GET /experiment/ping`（`internal/experiment/cmdinject`）
+
 ## ローカル起動
 
 ```bash
