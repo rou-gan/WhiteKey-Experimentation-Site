@@ -1,16 +1,25 @@
 # セキュリティ Agent 脅威モデル（ローカル `/review-security`）
 
-「しろかぎ」実験場向けに、ローカル Cursor の `/review-security`（`security-review` サブエージェント）が優先して見る観点を定義する。  
-確定的ゲート（`Backend Verify` の lint / test / Trivy / Syft / Grype）は置き換えない。Agent レビューは **advisory** とする。
+「しろかぎ」実験場向けに、ローカル Cursor の `/review-security`（`security-review` サブエージェント）と Semgrep Skills が優先して見る観点を定義する。
+
+**役割分担:**
+
+| 層 | 手段 | 扱い |
+| --- | --- | --- |
+| 決定的ゲート | `Backend Verify` / `Frontend Verify`（lint・test・Trivy・Syft・Grype）、GHA `Semgrep`（`semgrep scan --error`） | 失敗でジョブ失敗 |
+| advisory | ローカル `/review-security` + Semgrep Skills / CLI / MCP | PR コメントのみ。マージ非ブロック |
+
+Semgrep Cloud / Guardian / `SEMGREP_APP_TOKEN` は必須としない。
 
 関連:
 
 - セキュリティテスト計画: [security-test-plan.md](./security-test-plan.md)
 - Go 構成: [go-architecture.md](./go-architecture.md)
+- Phase A Semgrep Skill: [`.cursor/skills/semgrep-review/SKILL.md`](../.cursor/skills/semgrep-review/SKILL.md)
 
 ## 運用タイミング
 
-- **実行する:** push または Pull Request 作成の**直後**（手元の Cursor で `/review-security`）
+- **実行する:** push または Pull Request 作成の**直後**（手元の Cursor で `/review-security` + Semgrep）
 - **実行しない:** PR 作成前
 - **結果の残し方:** 該当 PR に `gh pr review --comment` でレビューコメント（`APPROVE` / `REQUEST_CHANGES` は使わない）
 
@@ -24,11 +33,13 @@
 | Medium | CSV / パス操作 | パストラバーサル、不安全なパス結合、CSV パースの不正入力放置 |
 | Medium | 新規 HTTP エンドポイント | 入力検証欠落、過剰な情報を返すレスポンス |
 | Medium | コンテナ権限 | Dockerfile で root 実行のまま、不要な権限の追加 |
+| Medium | Semgrep パターン | 注入・XSS・危険 API などレジストリルールの ERROR / WARNING（要約） |
 | Low | サプライチェーン設計コメント | 依存追加の意図・更新方針（CVE の再列挙はしない） |
 
 ## 見なくてよいもの（重複回避）
 
 - gosec / Trivy / Grype が既にブロックする既知 CVE の再列挙
+- GHA Semgrep が既に落とす同一 finding の長文再掲（ローカルでは要約・実験意図の読み分けに留める）
 - スタイル・命名・パフォーマンス微修正
 - テストのカバレッジ数値そのもの
 
@@ -49,4 +60,4 @@
 
 - 指摘が無い場合はその旨を書く。
 - ユーザーが明示するまでコード修正はしない。
-- マージ可否の最終判断は人間と `Backend Verify` に任せる。
+- マージ可否の最終判断は人間と決定的ゲート（Verify + GHA Semgrep）に任せる。

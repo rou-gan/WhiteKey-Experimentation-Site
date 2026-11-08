@@ -1,0 +1,57 @@
+# Semgrep SAST（レジストリルール、クラウド不要）
+# findings でジョブ失敗（--error）。Semgrep App / SEMGREP_APP_TOKEN は使わない。
+name: Semgrep
+
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/semgrep.yml"
+      - ".semgrepignore"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/semgrep.yml"
+      - ".semgrepignore"
+
+concurrency:
+  group: semgrep-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  semgrep:
+    name: Semgrep scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Semgrep scan
+        run: |
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/src" \
+            -w /src \
+            semgrep/semgrep \
+            semgrep scan --error --metrics=off \
+              --config p/security-audit \
+              --config p/owasp-top-ten \
+              --config p/golang \
+              --config p/javascript \
+              --sarif --output=/src/semgrep.sarif \
+              backend frontend
+
+      - name: Upload Semgrep SARIF
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-sarif
+          path: semgrep.sarif
+          if-no-files-found: warn
+          retention-days: 14
