@@ -22,7 +22,7 @@ type pingExperimentResponse struct {
 }
 
 // Ping builds (and runs) a ping command from ?host=.
-// INTENTIONAL: uses shell concatenation via cmdinject.PingArgs.
+// host は検証され、シェルを介さず argv で実行する。
 func (h *CmdInjectExperimentHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -40,10 +40,14 @@ func (h *CmdInjectExperimentHandler) Ping(w http.ResponseWriter, r *http.Request
 	resp := pingExperimentResponse{
 		Host:    host,
 		Args:    args,
-		Warning: "experiment endpoint: intentional OS command injection sink; do not expose in production",
+		Warning: "experiment endpoint: educational ping with validated argv; do not expose broadly in production",
 	}
 	if runErr != nil {
-		resp.Output = string(out) + "\n" + runErr.Error()
+		// 実行失敗時も内部エラー詳細はクライアントへ出さない。
+		resp.Output = string(out)
+		if resp.Output == "" {
+			resp.Output = "ping failed"
+		}
 	} else {
 		resp.Output = string(out)
 	}

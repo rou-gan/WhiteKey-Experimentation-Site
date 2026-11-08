@@ -3,20 +3,22 @@ package cmdinject
 import (
 	"fmt"
 	"os/exec"
+	"regexp"
 )
 
+// ホスト名／IPv4 向けの許可文字（シェルメタ文字を含まない）。
+var safeHost = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9.-]{0,253}$`)
+
 // PingArgs はホスト名から ping 実行用の argv を組み立てる。
-//
-// INTENTIONAL VULNERABILITY (experiment):
-// ユーザー入力をシェル文字列へ連結し `sh -c` で実行する形を返す。
-// `;` `|` `$(...)` などが注入されると OS コマンドインジェクションになる。
-// UT で検知し、後続で「検証 + 引数配列（シェルなし）」へ置き換える前提。
+// シェルを介さず、入力検証後に引数配列のみを返す（OS コマンドインジェクション防止）。
 func PingArgs(host string) ([]string, error) {
 	if host == "" {
 		return nil, fmt.Errorf("host is required")
 	}
-	// 危険: シェル経由 + 文字列連結
-	return []string{"sh", "-c", "ping -c 1 " + host}, nil
+	if !safeHost.MatchString(host) {
+		return nil, fmt.Errorf("invalid host")
+	}
+	return []string{"ping", "-c", "1", host}, nil
 }
 
 // RunPing は PingArgs の結果を実行する（実験ハンドラ用）。
@@ -25,6 +27,6 @@ func RunPing(host string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(args[0], args[1:]...) // #nosec G204 -- 意図的なコマンドインジェクション実験
+	cmd := exec.Command(args[0], args[1:]...)
 	return cmd.CombinedOutput()
 }

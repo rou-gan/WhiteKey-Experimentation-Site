@@ -114,13 +114,13 @@ paths:
       operationId: getExperimentPing
       summary: host から ping コマンドを組み立てて実行する（実験）
       description: |
-        クエリ `host` から ping 用 argv を組み立てて実行する。
-        **意図的に不安全**（シェル連結）。教育・ユニットテスト用。本番公開しないこと。
+        クエリ `host` を検証し、シェルを介さず ping の argv で実行する。
+        教育・ユニットテスト用。広く本番公開しないこと。
       parameters:
         - name: host
           in: query
           required: true
-          description: ping 対象（実験では未検証のままシェルへ連結されうる）
+          description: ping 対象（ホスト名／IPv4 風の許可文字のみ）
           schema:
             type: string
           example: example.com

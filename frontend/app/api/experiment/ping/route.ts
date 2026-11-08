@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildPingArgs } from "@/lib/experiment/cmdinject/ping";
 
 /**
- * OS コマンドインジェクション実験 API。
- * INTENTIONAL: buildPingArgs は sh -c 連結を返す。
- * ここでは argv を返すのみで OS 実行はしない（UT／教育用。実行シンクは backend 側実験を参照）。
+ * OS コマンドインジェクション対策の確認用 API。
+ * 検証済み argv を返すのみ（OS 実行はしない。実行は backend `/experiment/ping`）。
  */
 export async function GET(req: NextRequest) {
   const host = req.nextUrl.searchParams.get("host") ?? "";
@@ -15,7 +14,7 @@ export async function GET(req: NextRequest) {
       host,
       args,
       warning:
-        "experiment endpoint: intentional OS command injection construction; command is not executed here",
+        "experiment endpoint: validated argv only; command is not executed here",
     });
   } catch {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
