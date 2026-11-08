@@ -1,0 +1,57 @@
+# OWASP ZAP Automation Framework plan
+# Baseline 相当（spider + パッシブ）+ OpenAPI 取り込み。activeScan なし。
+# High 以上で exit 1（exitStatus）。
+env:
+  contexts:
+    - name: whitekey
+      urls:
+        - "${ZAP_TARGET_FE}"
+        - "${ZAP_TARGET_API}"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      enableTags: false
+      maxAlertsPerRule: 10
+
+  - type: openapi
+    name: import-backend-openapi
+    parameters:
+      apiFile: /zap/wrk/backend/openapi/openapi.yaml
+      targetUrl: "${ZAP_TARGET_API}"
+      context: whitekey
+
+  - type: spider
+    parameters:
+      context: whitekey
+      url: "${ZAP_TARGET_FE}"
+      maxDuration: 3
+      maxDepth: 5
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/zap-out
+      reportFile: zap-report
+      reportTitle: WhiteKey ZAP DAST Report
+      reportDescription: Baseline + OpenAPI passive scan
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/zap-out
+      reportFile: zap-report
+      reportTitle: WhiteKey ZAP DAST Report
+      reportDescription: Baseline + OpenAPI passive scan
+
+  - type: exitStatus
+    parameters:
+      errorLevel: High

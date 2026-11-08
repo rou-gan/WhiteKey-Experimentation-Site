@@ -1,0 +1,38 @@
+# CI 用: ZAP DAST ジョブ内で backend / frontend を同一ネットワークで起動する。
+# ローカル用の backend/docker-compose.yml / frontend/docker-compose.yml とは分離。
+name: whitekey-zap
+
+networks:
+  zapnet:
+    name: zapnet
+
+services:
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    image: whitekey-api:zap
+    networks:
+      - zapnet
+    ports:
+      - "8080:8080"
+    environment:
+      ADDR: ":8080"
+      DATA_CSV_PATH: /app/data/messages.csv
+      CORS_ALLOWED_ORIGINS: "http://frontend:3000,http://localhost:3000"
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    image: whitekey-web:zap
+    networks:
+      - zapnet
+    ports:
+      - "3000:3000"
+    environment:
+      API_BASE_URL: http://api:8080
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - api

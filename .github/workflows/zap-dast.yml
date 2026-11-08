@@ -1,0 +1,82 @@
+# OWASP ZAP DAST（Automation Framework / Docker）
+# Baseline + OpenAPI パッシブ。High 以上でジョブ失敗。
+# PR Verify ゲートにはしない（手動 / 週次のみ）。
+name: ZAP DAST
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 毎週水曜 13:17 UTC（実行時間の偏りを避ける）
+    - cron: "17 13 * * 3"
+
+concurrency:
+  group: zap-dast-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ZAP_TARGET_FE: http://frontend:3000
+  ZAP_TARGET_API: http://api:8080
+  COMPOSE_FILE: .github/zap/docker-compose.yml
+
+jobs:
+  zap:
+    name: Baseline + OpenAPI Passive Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare report directory
+        run: |
+          mkdir -p zap-out
+          chmod 777 zap-out
+
+      - name: Start backend and frontend
+        run: docker compose -f "${COMPOSE_FILE}" up -d --build
+
+      - name: Wait for services
+        run: |
+          set -e
+          echo "Waiting for api:8080 and frontend:3000 ..."
+          for i in $(seq 1 60); do
+            if curl -sf "http://localhost:8080/" >/dev/null \
+              && curl -sf "http://localhost:3000/" >/dev/null; then
+              echo "Services are up (attempt ${i})"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for services"
+          docker compose -f "${COMPOSE_FILE}" ps
+          docker compose -f "${COMPOSE_FILE}" logs --tail=100
+          exit 1
+
+      - name: Run ZAP Automation Framework
+        run: |
+          docker run --rm \
+            --network zapnet \
+            -v "${GITHUB_WORKSPACE}:/zap/wrk:rw" \
+            -e "ZAP_TARGET_FE=${ZAP_TARGET_FE}" \
+            -e "ZAP_TARGET_API=${ZAP_TARGET_API}" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap.sh -cmd -autorun /zap/wrk/.github/zap/plan.yaml
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-dast-report
+          path: |
+            zap-out/zap-report.html
+            zap-out/zap-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f "${COMPOSE_FILE}" down --remove-orphans
