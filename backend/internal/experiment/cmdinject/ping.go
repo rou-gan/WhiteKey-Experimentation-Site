@@ -27,6 +27,7 @@ func RunPing(host string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(args[0], args[1:]...)
+	// args は PingArgs で許可リスト検証済みの固定バイナリ + 位置引数のみ。
+	cmd := exec.Command(args[0], args[1:]...) // #nosec G204 -- host allowlist-validated argv, no shell
 	return cmd.CombinedOutput()
 }
