@@ -27,9 +27,8 @@ export default async function CmdInjectExperimentPage({
     <main style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
       <h1>OS コマンドインジェクション実験</h1>
       <p>
-        クエリ <code>?host=</code> から argv を組み立てて表示します（意図的に不安全な組み立て。
-        このページでは OS 実行しません。HTTP シンクは{" "}
-        <code>/api/experiment/ping</code>）。
+        クエリ <code>?host=</code> から検証済み argv を組み立てて表示します（このページでは OS
+        実行しません。HTTP API は <code>/api/experiment/ping</code>）。
       </p>
       {error ? <p role="status">{error}</p> : null}
       {args ? (

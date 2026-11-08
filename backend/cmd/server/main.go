@@ -25,7 +25,7 @@ func main() {
 	mux.HandleFunc("/", h.GetRoot)
 	// HTML 埋め込み時のエスケープ（XSS 防止）を示す実験・教育用エンドポイント。
 	mux.HandleFunc("/experiment/greet", xssH.Greet)
-	// OS コマンドインジェクション実験（意図的に不安全な組み立て・実行）。
+	// OS コマンドインジェクション対策の確認用（検証済み argv で ping）。
 	mux.HandleFunc("/experiment/ping", cmdH.Ping)
 
 	server := &http.Server{
