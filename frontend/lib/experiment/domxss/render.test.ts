@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderPreviewHTML } from "./render";
+import { escapeHTML, renderPreviewHTML } from "./render";
 
 // XSS プローブは攻撃手順ではなく、エスケープ漏れを検出するためのテスト用入力。
 const xssProbes = [
@@ -19,15 +19,6 @@ const xssProbes = [
     purpose: "引用符による属性脱出がエスケープされること",
   },
 ] as const;
-
-function escapeHTML(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 // 目的: 信頼できない入力を HTML 埋め込み前にエスケープし、DOM ベース XSS を防ぐ。
 describe("renderPreviewHTML", () => {

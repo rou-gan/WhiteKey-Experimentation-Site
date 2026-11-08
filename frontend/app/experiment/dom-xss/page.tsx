@@ -1,8 +1,8 @@
 import { DomXssPreview } from "./DomXssPreview";
 
 /**
- * DOM ベース XSS 実験ページ。
- * クエリ `html` をクライアント側で HTML シンクへ渡す（意図的に不安全）。
+ * DOM ベース XSS 対策の確認ページ。
+ * クエリ `html` は埋め込み前にエスケープされる。
  */
 export default async function DomXssExperimentPage({
   searchParams,
@@ -17,7 +17,7 @@ export default async function DomXssExperimentPage({
       <h1>DOM XSS 実験</h1>
       <p>
         クエリ <code>?html=</code>{" "}
-        の値をクライアントで HTML として埋め込みます（教育・UT 用の意図的脆弱実装）。
+        の値を HTML 埋め込み前にエスケープして表示します（教育・UT 用）。
       </p>
       <DomXssPreview html={html} />
     </main>

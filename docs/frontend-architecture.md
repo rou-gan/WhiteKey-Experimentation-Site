@@ -65,9 +65,9 @@ frontend/
 
 ## セキュリティ実験（DOM XSS）
 
-- `lib/experiment/domxss/render.ts` … HTML 断片生成（意図的に未エスケープな実装を置く実験用）
-- `app/experiment/dom-xss` … クエリ `html` を `dangerouslySetInnerHTML` シンクへ渡すページ
-- UT: `lib/experiment/domxss/render.test.ts`（エスケープ必須。脆弱実装では失敗する）
+- `lib/experiment/domxss/render.ts` … HTML 断片生成（埋め込み前に `escapeHTML`）
+- `app/experiment/dom-xss` … クエリ `html` をエスケープ済み断片として表示するページ
+- UT: `lib/experiment/domxss/render.test.ts`（エスケープ必須）
 - `npm test`（Vitest）を Frontend Verify に含める
 
 ## ローカル起動
