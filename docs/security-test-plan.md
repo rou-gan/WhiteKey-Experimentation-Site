@@ -315,7 +315,7 @@ Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Au
 
 - GHA: [`.github/workflows/semgrep.yml`](../.github/workflows/semgrep.yml) で `semgrep scan --error`（`p/security-audit` / `p/owasp-top-ten` / `p/golang` / `p/javascript`）。クラウド不要。
 - ローカル: push / PR 直後に Semgrep Skills / CLI / MCP を実行し、`/review-security` コメントに要約を含める（[`.cursor/skills/semgrep-review/SKILL.md`](../.cursor/skills/semgrep-review/SKILL.md)）。
-- `.semgrepignore` で `node_modules` 等を除外。実験パスは初回スキャン対象のまま。
+- `.semgrepignore` で `node_modules` と `**/experiment/**`（意図的ドリル）を除外。実験コードは Phase A advisory で文脈付き確認。
 
 ### 受け入れ条件
 

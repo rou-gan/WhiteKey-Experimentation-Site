@@ -17,3 +17,9 @@ go.sum
 *.cdx.json
 *.sarif
 zap-out/
+
+# セキュリティ実験・教育用（意図的パターン。ゲートは本番相当パスのみ）
+**/experiment/**
+backend/internal/experiment/
+frontend/lib/experiment/
+frontend/app/experiment/
