@@ -1,6 +1,6 @@
 # OWASP ZAP DAST（Automation Framework / Docker）
 # Baseline + OpenAPI パッシブ。High 以上でジョブ失敗。
-# PR Verify ゲートにはしない（手動 / 週次のみ）。
+# 必須マージゲートにはしない。pull_request は導入確認用（確認後に外してよい）。
 name: ZAP DAST
 
 on:
@@ -8,6 +8,12 @@ on:
   schedule:
     # 毎週水曜 13:17 UTC（実行時間の偏りを避ける）
     - cron: "17 13 * * 3"
+  pull_request:
+    paths:
+      - ".github/workflows/zap-dast.yml"
+      - ".github/zap/**"
+      - "backend/**"
+      - "frontend/**"
 
 concurrency:
   group: zap-dast-${{ github.workflow }}
