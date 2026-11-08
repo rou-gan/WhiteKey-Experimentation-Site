@@ -41,4 +41,5 @@ gh pr review --comment --body-file <レビュー本文ファイル>
 ## 実験コード
 
 `internal/experiment/` や意図的脆弱サンプルは検知してよい。PR に実験意図が明示されていれば Critical 扱いにしない。  
-`handler` / `usecase` / `domain` / Dockerfile / workflows は厳しく見る。
+`handler` / `usecase` / `domain` / `frontend/app` / Dockerfile / workflows は厳しく見る。
+frontend では XSS（`dangerouslySetInnerHTML` 等）、秘密の `NEXT_PUBLIC_*` 露出、CORS 誤設定も優先する。

@@ -1,0 +1,114 @@
+# Build and security-scan the frontend image.
+# Render deploy is intentionally omitted until Render.com is ready.
+name: Frontend Pre-Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to build (branch, tag like v0.00.01, or SHA). Empty = current branch tip."
+        required: false
+        default: ""
+
+concurrency:
+  group: frontend-pre-deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: whitekey-web:ci
+
+jobs:
+  build-and-scan:
+    name: Build Image, Syft SBOM, Grype Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Build Docker image
+        run: docker build -t "${IMAGE_NAME}" ./frontend
+
+      - name: Verify non-root user
+        run: |
+          set -euo pipefail
+          user="$(docker image inspect "${IMAGE_NAME}" --format '{{.Config.User}}')"
+          echo "Config.User=${user}"
+          if [ -z "${user}" ] || [ "${user}" = "0" ] || [ "${user}" = "root" ]; then
+            echo "Container image must run as non-root user" >&2
+            exit 1
+          fi
+          uid="$(docker run --rm --entrypoint id "${IMAGE_NAME}" -u)"
+          echo "Runtime uid=${uid}"
+          if [ "${uid}" = "0" ]; then
+            echo "Container process must not run as uid 0" >&2
+            exit 1
+          fi
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.IMAGE_NAME }}
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          format: table
+          output: frontend-trivy-image.txt
+          ignore-unfixed: true
+
+      - name: Generate SBOM with Syft (CycloneDX)
+        uses: anchore/sbom-action@v0.24.3
+        with:
+          image: ${{ env.IMAGE_NAME }}
+          format: cyclonedx-json
+          output-file: frontend-sbom.cdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Audit SBOM with Grype
+        uses: anchore/scan-action@v7.4.2
+        with:
+          sbom: frontend-sbom.cdx.json
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+          output-file: frontend-grype-sbom.txt
+
+      - name: Upload scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-pre-deploy-security
+          path: |
+            frontend-trivy-image.txt
+            frontend-sbom.cdx.json
+            frontend-grype-sbom.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Summary (no Render deploy)
+        run: |
+          echo "Pre-deploy checks finished."
+          echo "Render deploy step is skipped until Render.com setup is ready."
+          echo "Image built: ${IMAGE_NAME}"
+          echo "Ref: ${{ inputs.ref || github.ref }}"

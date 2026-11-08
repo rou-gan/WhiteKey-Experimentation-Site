@@ -8,6 +8,7 @@
 - デプロイ方針: [render.md](./render.md)
 - Go 構成（DDD）: [go-architecture.md](./go-architecture.md)
 - ローカルセキュリティ Agent 脅威モデル: [security-agent-threat-model.md](./security-agent-threat-model.md)
+- Frontend 構成: [frontend-architecture.md](./frontend-architecture.md)
 
 ## 目的
 
@@ -28,6 +29,9 @@
 | コンテナスキャン | リリースデプロイ前（手動 Actions） | Trivy（image） | Critical / High はデプロイブロック |
 | 構成チェック | リリースデプロイ前 | Dockerfile / イメージ検査 | non-root 未設定はブロック |
 | ローカル Agent レビュー | push / PR 作成**直後**（作成前は不可） | Cursor `/review-security` + `gh pr review --comment` | advisory（マージ非ブロック） |
+| Frontend 静的解析 / ビルド | PR / `main`（`frontend/**`） | ESLint、`next build` | 失敗でブロック |
+| Frontend 依存・SBOM | PR / リリース前 | Trivy FS、Syft、Grype | Critical / High でブロック |
+| Frontend コンテナスキャン | リリースデプロイ前（手動） | Trivy image、non-root | Critical / High でデプロイブロック |
 
 デプロイ自体は人間主導のリリースタグ＋手動 Actions（[render.md](./render.md)）とし、**検証パイプラインとデプロイパイプラインを分離**する。
 
@@ -37,9 +41,10 @@
 
 - Go アプリケーション（`cmd/` / `internal/`）
 - 同梱 CSV（仮想 DB）とその読み取り処理
-- Dockerfile / コンテナイメージ
+- Next.js フロントエンド（`frontend/`）
+- Dockerfile / コンテナイメージ（backend / frontend それぞれ）
 - GitHub Actions 上のセキュリティジョブ
-- 依存モジュール（`go.mod` / `go.sum`）と SBOM
+- 依存モジュール（`go.mod` / `go.sum`、`package-lock.json`）と SBOM
 
 ### Out of Scope（初期）
 
@@ -288,15 +293,16 @@ Phase 4  コンテナスキャン + non-root 検証  … デプロイ直前ゲ�
 
 | 目的 | ツール |
 | --- | --- |
-| Lint / SAST | `golangci-lint`, `gosec` |
+| Lint / SAST | `golangci-lint`, `gosec`（backend）、ESLint（frontend） |
 | ユニットテスト | `go test`, `testing` / `net/http/httptest` |
+| Frontend ビルド | `next build`（standalone） |
 | 結果の一次確認 | GitHub Actions Jobs ログ |
 | 結果ファイルの保管 | `actions/upload-artifact`（coverage / SBOM / Trivy 等） |
 | 依存・イメージスキャン | Trivy |
 | SBOM 生成 | Syft（`anchore/sbom-action`） |
 | SBOM 監査 | Grype（`anchore/scan-action`、SBOM 入力） |
 | CI | GitHub Actions |
-| デプロイ先 | Render.com（Web Service、CSV 仮想 DB） |
+| デプロイ先 | Render.com（backend / frontend 別 Web Service） |
 
 初期は Codecov 等の外部ダッシュボードは使わない。
 
@@ -327,6 +333,7 @@ Cursor Automations / クラウド Agent / Actions 上の Cursor CLI は使わな
 - [x] Trivy + Syft SBOM + Grype 監査ジョブと Artifact 保存（Phase 3）
 - [x] タグ push 時にセキュリティ成果物を GitHub Release へ添付（`backend-release.yml`）
 - [x] ローカル `/review-security` + PR レビューコメント運用（Phase A）
+- [x] frontend Next.js スキャフォールドと Verify / Release / Pre-Deploy
 - [ ] Dockerfile の non-root 化とイメージスキャン（Phase 4）
 - [ ] Critical / High ブロックポリシーの Actions への実装
 - [ ] README へのテスト／セキュリティゲート概要の追記
