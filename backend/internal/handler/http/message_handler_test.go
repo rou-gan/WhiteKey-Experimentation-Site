@@ -31,7 +31,7 @@ func newHandler(t *testing.T, repo *stubRepo) *handlerhttp.MessageHandler {
 	return handlerhttp.NewMessageHandler(messageuc.NewUseCase(repo))
 }
 
-// 目的: 正常系で JSON メッセージと Content-Type が返ること。
+// ケース: H-01 / 目的: 正常系で JSON メッセージと Content-Type が返ること。
 func TestMessageHandler_GetRoot_Success(t *testing.T) {
 	t.Parallel()
 
@@ -61,7 +61,7 @@ func TestMessageHandler_GetRoot_Success(t *testing.T) {
 	}
 }
 
-// 目的: GET 以外のメソッドを 405 で拒否すること。
+// ケース: H-02 / 目的: GET 以外のメソッドを 405 で拒否すること。
 func TestMessageHandler_GetRoot_MethodNotAllowed(t *testing.T) {
 	t.Parallel()
 
@@ -75,7 +75,7 @@ func TestMessageHandler_GetRoot_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// 目的: 内部エラー詳細（パス・秘密・スタック等）がレスポンスへ漏洩しないこと。
+// ケース: H-03 / 目的: 内部エラー詳細（パス・秘密・スタック等）がレスポンスへ漏洩しないこと。
 func TestMessageHandler_GetRoot_ErrorDoesNotLeakInternals(t *testing.T) {
 	t.Parallel()
 

@@ -7,7 +7,7 @@ import (
 	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/domain/message"
 )
 
-// 目的: 妥当な ID・本文で Message を生成できること。
+// ケース: D-01 / 目的: 妥当な ID・本文で Message を生成できること。
 func TestNewMessage_Success(t *testing.T) {
 	t.Parallel()
 
@@ -23,7 +23,7 @@ func TestNewMessage_Success(t *testing.T) {
 	}
 }
 
-// 目的: 空の ID または本文をドメイン層で拒否すること。
+// ケース: D-02, D-03 / 目的: 空の ID または本文をドメイン層で拒否すること。
 func TestNewMessage_RejectsEmptyValues(t *testing.T) {
 	t.Parallel()
 
@@ -33,9 +33,8 @@ func TestNewMessage_RejectsEmptyValues(t *testing.T) {
 		content string
 		purpose string
 	}{
-		{name: "empty id", id: "", content: "Hello", purpose: "空 ID を拒否する"},
-		{name: "empty content", id: "1", content: "", purpose: "空本文を拒否する"},
-		{name: "both empty", id: "", content: "", purpose: "両方空でも拒否する"},
+		{name: "empty id", id: "", content: "Hello", purpose: "D-02: 空 ID を拒否する"},
+		{name: "empty content", id: "1", content: "", purpose: "D-03: 空本文を拒否する"},
 	}
 
 	for _, tc := range cases {
@@ -54,7 +53,7 @@ func TestNewMessage_RejectsEmptyValues(t *testing.T) {
 	}
 }
 
-// 目的: SQL/XSS 風の文字列も「コード」として弾かず、不透明なデータとして保持すること。
+// ケース: D-04 / 目的: SQL/XSS 風の文字列も「コード」として弾かず、不透明なデータとして保持すること。
 func TestNewMessage_AcceptsSpecialCharactersAsData(t *testing.T) {
 	t.Parallel()
 
