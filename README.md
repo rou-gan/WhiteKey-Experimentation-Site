@@ -156,3 +156,5 @@ npm run dev
 - **Phase 2:** Syft SBOM + Grype 突き合わせ監査の定着、依存スキャンの継続監視
 - **Phase 2.5:** frontend Next.js + Verify / Release / Pre-Deploy（Render 接続は準備中）
 - **Phase 3:** SCAP / Policy as Code、監査ログ収集の実験
+- **Phase 4:** Auth0 による認証基盤の追加（frontend / backend への統合と保護 API の実験）
+- **Phase 5:** 要認証の MCP サーバー構築（Auth0 と連携したアクセス制御の検証）
