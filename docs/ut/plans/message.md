@@ -1,7 +1,7 @@
 # UT 計画: message コンテキスト
 
 `.cursor/rules/ut-plan-go-api.mdc` に沿った計画。  
-対象は PoC の Message API（`GET /` → usecase → CSV リポジトリ）の一般 UT。  
+対象は PoC の Message API（`GET /` → usecase → Postgres リポジトリ）の一般 UT。  
 `internal/experiment/` や意図的脆弱エンドポイントは対象外。
 
 関連: [go-architecture.md](../../go-architecture.md) / [docs/ut/README.md](../README.md)
@@ -15,7 +15,7 @@
 | domain | `NewMessage` | `backend/internal/domain/message` |
 | usecase | `UseCase.GetByID` | `backend/internal/usecase/message` |
 | handler | `MessageHandler.GetRoot` | `backend/internal/handler/http` |
-| infra | `messageCSVRepository.FindByID` | `backend/internal/infrastructure/persistence` |
+| infra | `messagePostgresRepository.FindByID` | `backend/internal/infrastructure/persistence` |
 
 ---
 
@@ -90,7 +90,7 @@
 
 | ケースID | 責務ID | 目的 | 入力 | 依存の戻り | 期待 |
 | --- | --- | --- | --- | --- | --- |
-| H-01 | H-P1 | 正常系で JSON メッセージと Content-Type が返ること | Method=GET, path=`/` | usecase が content=`Hello World` | status=200, Content-Type に `application/json`, body.message=`Hello World` |
+| H-01 | H-P1 | GET 成功時に JSON メッセージと Content-Type が返ること | Method=GET, path=`/` | usecase が content=`Hello World` | status=200, Content-Type に `application/json`, body.message=`Hello World` |
 | H-02 | H-P2 | GET 以外のメソッドを 405 で拒否すること | Method=POST, path=`/` | （呼ばない） | status=405 |
 | H-03 | H-P3 | 内部エラー詳細がレスポンスへ漏洩しないこと | Method=GET | usecase err に path/secret/stack 相当の文言 | status=500, body は汎用（例: `internal server error`）, 内部断片を含まない |
 
@@ -104,27 +104,27 @@
 
 ---
 
-## 4. infra — `FindByID`（CSV）
+## 4. infra — `FindByID`（Postgres）
+
+`TEST_DATABASE_URL` があるときだけ実行する（無いときは skip）。実行前に goose migrate を当てる。
 
 ### 責務リスト
 
 | 責務ID | 責務 |
 | --- | --- |
-| I-P1 | CSV 上で ID が一致する行のメッセージを返す |
+| I-P1 | DB 上で ID が一致する行のメッセージを返す |
 | I-P2 | 一致する行が無ければ not found エラーにする |
 | I-P3 | 一致しない特殊 ID でもルックアップを安全に終える（解釈しない） |
 | I-P4 | キャンセル済み context では処理を始めず context エラーを返す |
-| I-P5 | CSV ファイルを開けなければエラーを返す |
 
 ### ケース表
 
 | ケースID | 責務ID | 目的 | 入力 | 依存の戻り | 期待 |
 | --- | --- | --- | --- | --- | --- |
-| I-01 | I-P1 | CSV から ID 一致のメッセージを取得できること | id=`1`, CSV=`id,message\n1,Hello World\n` | （実ファイル） | err=nil, content=`Hello World` |
-| I-02 | I-P2 | 存在しない ID は未発見エラーになること | id=`999`, 同上 CSV | （実ファイル） | err≠nil, msg=nil |
-| I-03 | I-P3 | 特殊な ID を解釈せず一致しなければ not found で終えること | id=`1 OR 1=1` 等（CSV に無し） | （実ファイル） | err≠nil（not found）, msg=nil |
-| I-04 | I-P4 | キャンセル済み context を検出して中断すること | ctx canceled, id=`1` | （実ファイル可） | err≠nil（context） |
-| I-05 | I-P5 | CSV ファイル不在時にエラーを返すこと | 存在しない path | — | err≠nil |
+| I-01 | I-P1 | DB から ID 一致のメッセージを取得できること | id=`1`（シード行） | （実 DB） | err=nil, content=`Hello World` |
+| I-02 | I-P2 | 存在しない ID は未発見エラーになること | id=`999` | （実 DB） | err≠nil, msg=nil |
+| I-03 | I-P3 | 特殊な ID を解釈せず一致しなければ not found で終えること | id=`1 OR 1=1` 等（DB に無し） | （実 DB） | err≠nil（not found）, msg=nil |
+| I-04 | I-P4 | キャンセル済み context を検出して中断すること | ctx canceled, id=`1` | （実 DB 可） | err≠nil（context） |
 
 ### 網羅チェック
 
@@ -134,4 +134,3 @@
 | I-P2 | I-02 |
 | I-P3 | I-03 |
 | I-P4 | I-04 |
-| I-P5 | I-05 |

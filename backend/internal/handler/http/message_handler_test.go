@@ -79,7 +79,7 @@ func TestMessageHandler_GetRoot_MethodNotAllowed(t *testing.T) {
 func TestMessageHandler_GetRoot_ErrorDoesNotLeakInternals(t *testing.T) {
 	t.Parallel()
 
-	internal := errors.New(`open csv: open /app/data/messages.csv: secret=super-secret stack=goroutine 1 [running]`)
+	internal := errors.New(`query message: pq: secret=super-secret host=db.internal stack=goroutine 1 [running]`)
 	h := newHandler(t, &stubRepo{err: internal})
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -92,10 +92,10 @@ func TestMessageHandler_GetRoot_ErrorDoesNotLeakInternals(t *testing.T) {
 
 	body := rec.Body.String()
 	forbidden := []string{
-		"/app/data/messages.csv",
+		"db.internal",
 		"super-secret",
 		"goroutine",
-		"open csv",
+		"query message",
 		"stack",
 	}
 	for _, s := range forbidden {

@@ -1,5 +1,6 @@
 # CI 用: ZAP DAST ジョブ内で backend / frontend を同一ネットワークで起動する。
 # ローカル用の backend/docker-compose.yml / frontend/docker-compose.yml とは分離。
+# DB 資格情報は ${VAR} 参照。CI では zap-dast.yml の env で渡す（.env 不要）。
 name: whitekey-zap
 
 networks:
@@ -7,6 +8,20 @@ networks:
     name: zapnet
 
 services:
+  db:
+    image: postgres:16-alpine
+    networks:
+      - zapnet
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: ../../backend
@@ -18,8 +33,11 @@ services:
       - "8080:8080"
     environment:
       ADDR: ":8080"
-      DATA_CSV_PATH: /app/data/messages.csv
+      DATABASE_URL: ${DATABASE_URL}
       CORS_ALLOWED_ORIGINS: "http://frontend:3000,http://localhost:3000"
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build:

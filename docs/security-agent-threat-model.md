@@ -28,9 +28,9 @@ Semgrep Cloud / Guardian / `SEMGREP_APP_TOKEN` は必須としない。
 | 優先度 | 観点 | 典型例 |
 | --- | --- | --- |
 | High | 反射型 XSS | HTML 埋め込み前のエスケープ欠落（`/experiment/greet` や handler の HTML 応答） |
-| High | 情報漏洩 | エラー応答へのスタックトレース、内部パス、秘密情報、CSV 生データの露出 |
+| High | 情報漏洩 | エラー応答へのスタックトレース、内部パス、秘密情報、DB 接続情報の露出 |
 | High | 秘密情報のコミット | API キー、トークン、Deploy Hook URL などのハードコード |
-| Medium | CSV / パス操作 | パストラバーサル、不安全なパス結合、CSV パースの不正入力放置 |
+| Medium | SQL インジェクション / DB 契約 | 文字列連結クエリ、未パラメータ化の入力、過剰な DB エラー詳細の返却 |
 | Medium | 新規 HTTP エンドポイント | 入力検証欠落、過剰な情報を返すレスポンス |
 | Medium | コンテナ権限 | Dockerfile で root 実行のまま、不要な権限の追加 |
 | Medium | Semgrep パターン | 注入・XSS・危険 API などレジストリルールの ERROR / WARNING（要約） |
