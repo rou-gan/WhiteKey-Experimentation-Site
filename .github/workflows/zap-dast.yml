@@ -20,11 +20,8 @@ env:
   ZAP_TARGET_FE: http://frontend:3000
   ZAP_TARGET_API: http://api:8080
   COMPOSE_FILE: .github/zap/docker-compose.yml
-  # CI-only non-secrets for .github/zap/docker-compose.yml (${VAR} substitution)
-  POSTGRES_USER: whitekey
-  POSTGRES_PASSWORD: whitekey
+  POSTGRES_USER: ci
   POSTGRES_DB: whitekey
-  DATABASE_URL: postgres://whitekey:whitekey@db:5432/whitekey?sslmode=disable
 
 jobs:
   zap:
@@ -40,6 +37,15 @@ jobs:
         run: |
           mkdir -p zap-out
           chmod 777 zap-out
+
+      - name: Generate ephemeral DB password
+        run: |
+          set -euo pipefail
+          PW="$(openssl rand -hex 16)"
+          {
+            echo "POSTGRES_PASSWORD=${PW}"
+            echo "DATABASE_URL=postgres://ci:${PW}@db:5432/whitekey?sslmode=disable"
+          } >> "${GITHUB_ENV}"
 
       - name: Start backend and frontend
         run: docker compose -f "${COMPOSE_FILE}" up -d --build
