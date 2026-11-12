@@ -23,5 +23,6 @@ func (h *XSSExperimentHandler) Greet(w http.ResponseWriter, r *http.Request) {
 
 	name := r.URL.Query().Get("name")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = w.Write([]byte(xssrender.RenderGreeting(name)))
+	// RenderGreeting HTML-escapes name before embedding (reflected XSS drill).
+	_, _ = w.Write([]byte(xssrender.RenderGreeting(name))) // #nosec G705 -- escaped by xssrender.RenderGreeting
 }
