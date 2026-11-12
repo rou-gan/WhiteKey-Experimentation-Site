@@ -57,9 +57,9 @@ jobs:
           cache-dependency-path: backend/go.mod
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.61.0
+          version: v2.15.0
           working-directory: backend
           args: --timeout=5m
 
