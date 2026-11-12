@@ -3,13 +3,13 @@ info:
   title: しろかぎ Backend API
   description: |
     「しろかぎ」のセキュリティ実験場向け Go API（PoC）。
-    CSV 仮想 DB からメッセージを取得して返すほか、
+    PostgreSQL からメッセージを取得して返すほか、
     HTML 埋め込み時のエスケープ（反射型 XSS 防止）を示すエンドポイントを含む。
     OS コマンドインジェクション実験用の ping エンドポイントを含む（教育・UT 用）。
     ブラウザ（frontend）からの呼び出し向けに CORS を付与する。
     許可オリジンは環境変数 `CORS_ALLOWED_ORIGINS`（カンマ区切り）。未設定時は
     `http://localhost:3000` と `http://127.0.0.1:3000`。
-  version: 0.0.4
+  version: 0.0.5
   contact:
     name: WhiteKey Experimentation Site
 
@@ -33,7 +33,7 @@ paths:
       operationId: getRootMessage
       summary: 既定メッセージを取得する
       description: |
-        CSV に登録された既定メッセージ（id=`1`）を JSON で返す。
+        PostgreSQL の `messages` に登録された既定メッセージ（id=`1`）を JSON で返す。
       responses:
         "200":
           description: メッセージ取得成功

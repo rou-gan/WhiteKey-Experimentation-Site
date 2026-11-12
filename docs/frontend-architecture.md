@@ -40,7 +40,7 @@ frontend/
     ↓ HTTP (NEXT_PUBLIC_API_BASE_URL)
 [Render Web Service — backend (Go API)]
     ↓
-[CSV 仮想 DB]
+[Render Postgres]
 ```
 
 - ブラウザは frontend オリジンから API を呼ぶため、backend は **CORS** で frontend オリジンを許可する。

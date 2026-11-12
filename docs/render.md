@@ -52,8 +52,9 @@ vMAJOR.MINOR.PATCH
        ・将来: 各 Deploy Hook / API でデプロイ要求
                 ↓
 [Render.com]
-       ・Web Service（backend）: Go API / CSV
+       ・Web Service（backend）: Go API / PostgreSQL
        ・Web Service（frontend）: Next.js standalone（別コンテナ）
+       ・Postgres（Free）: whitekey-db
 ```
 
 同一タグで backend / frontend の両方をリリースする。サービスは **別コンテナ・別 Web Service・別 Deploy Hook**。
@@ -79,20 +80,32 @@ PR の Actions Artifact は短期保管用。Release 資産はタグ時点の正
 | --- | --- |
 | Web Service（backend） | Go API Server（Docker コンテナ） |
 | Web Service（frontend） | Next.js standalone（**別** Docker コンテナ） |
-| CSV ファイル（仮想 DB） | backend 同梱の `"Hello World"` など |
+| Render Postgres（Free） | `messages` 等のアプリデータ（リソース名 `whitekey-db`） |
 
-PostgreSQL などのマネージド DB は **採用しない**（理由は後述）。
+インフラ定義の正本はリポジトリルートの [`render.yaml`](../render.yaml)（Blueprint）。`DATABASE_URL` は手貼りせず `fromDatabase` で注入する。
+
+### 固定名（作り直し時も変えない）
+
+| 項目 | 値 |
+| --- | --- |
+| Postgres リソース名 | `whitekey-db` |
+| databaseName | `whitekey` |
+| user | `whitekey` |
+| Region | `oregon`（Web Service と同じ。初回選定後は変更しない） |
+| Compute plan | `free`（実験用。期限切れ前提） |
+
+有料化すれば期限切れは避けられる（入口はおおよそ $6/月〜）。本実験場は Free 再作成を許容する。
 
 ### Web Service — backend（想定設定）
 
 | 項目 | 方針 |
 | --- | --- |
-| Runtime | Docker |
-| Region | 実験コスト・レイテンシを考慮して選択（後で固定） |
-| Branch / Commit | 通常の「main 追従の自動デプロイ」は **無効** |
+| Runtime | Docker（`backend/Dockerfile`） |
+| Region | `oregon`（DB と同一） |
+| Branch / Commit | `autoDeployTrigger: off`（Blueprint）。通常の main 追従自動デプロイは無効 |
 | デプロイ契機 | GitHub Actions からの Deploy Hook / API 呼び出し |
-| データストア | コンテナ内（またはリポジトリ同梱）の CSV ファイル |
-| 環境変数 | CSV パスなど必要最小限（例: `DATA_CSV_PATH`）。CORS 許可オリジン（例: `CORS_ALLOWED_ORIGINS`） |
+| データストア | Render Postgres（`DATABASE_URL`） |
+| 環境変数 | `DATABASE_URL`（`fromDatabase`）、`CORS_ALLOWED_ORIGINS` 等 |
 
 ### Web Service — frontend（想定設定）
 
@@ -106,27 +119,24 @@ PostgreSQL などのマネージド DB は **採用しない**（理由は後述
 
 詳細は [frontend-architecture.md](./frontend-architecture.md)。
 
-### データ永続化（CSV 仮想 DB）
+### データ永続化（PostgreSQL）
 
-PoC では RDB の代わりに CSV を「仮想 DB」として扱う。
+- スキーマと初期シードの正本はアプリ埋め込みマイグレーション（goose）。配置: `backend/internal/infrastructure/persistence/migrations/`。
+- backend 起動時に `DATABASE_URL` へ接続し、migrate up したうえでリッスンする。
+- 初回シード: `messages` に `id=1` / `content=Hello World`。
+- Free Postgres は約 30 日で期限切れするため、**データ消失を前提**に運用する。スキーマは再デプロイで復元する。
 
-- 初期データ（例: `message = "Hello World"`）は CSV としてリポジトリまたはコンテナイメージに同梱する。
-- API（`GET /`）は起動時またはリクエスト時に CSV を読み取り、値を返す。
-- スキーマは最小構成とする（例: `id,message`）。
-- 書き込みが必要になった場合も、まずは同一 CSV への更新を想定する。  
-  ※ Render 無料 Web Service のローカルディスクは再デプロイで消えるため、**正本はリポジトリ／イメージ内の CSV** とし、ランタイム書き込みだけに依存しない。
+### Free Postgres 作り直しランブック
 
-### PostgreSQL を採用しない理由
+データが消えてよい前提。接続文字列のコピペやスキーマ手打ちはしない。
 
-| 理由 | 内容 |
-| --- | --- |
-| 無料枠の寿命 | Render.com の PostgreSQL 無料プランは **約 30 日でインスタンスが削除**される。実験場として継続利用しづらい。 |
-| コスト方針 | 本プロジェクトは無料枠・低コストでの検証が前提。有料 DB を常時維持する段階ではない。 |
-| PoC のデータ量 | 初期要件は `"Hello World"` の保持・返却のみ。RDB の機能（トランザクション、同時書き込み等）は不要。 |
-| 構成の単純化 | DB インスタンス・接続文字列・マイグレーション・ネットワーク設定を省き、Web Service 単体で完結させる。 |
-| 再現性 | データ定義を CSV としてリポジトリ管理でき、タグ単位で「どのデータ付きビルドか」を追いやすい。 |
+1. 期限切れメールを確認する（作成から約 30 日。その後 14 日の猶予あり）。
+2. 猶予終了後、または明示削除後、Dashboard で **同じ名前** `whitekey-db` の Free Postgres を新規作成する（region=`oregon`、databaseName / user は Blueprint どおり）。
+3. Blueprint（`render.yaml`）を sync し、backend の `DATABASE_URL` が新 DB に再紐付けされることを確認する。
+4. backend を再デプロイする（現行の Deploy Hook / Pre-Deploy 運用）。
+5. 起動時 migrate により `messages` テーブルと Hello World シードが復元されることを `GET /` で確認する。
 
-将来、本格的な永続化や複数インスタンス共有が必要になった段階で、有料 PostgreSQL や外部ストレージの再検討を行う。
+手作業の中心は「Free DB の新規作成」のみ。ワークスペースあたり Free Postgres は 1 つ。
 
 ## GitHub Actions との役割分担
 
@@ -152,9 +162,9 @@ PoC では RDB の代わりに CSV を「仮想 DB」として扱う。
 
 ダッシュボードで次を用意する。
 
-1. **Web Service（backend）** と **Web Service（frontend）** をそれぞれ作成する（Docker）。PostgreSQL は作成しない
-2. 両方とも **Auto-Deploy を Off** にする
-3. backend: CSV パス・CORS オリジン等。frontend: `NEXT_PUBLIC_API_BASE_URL` 等
+1. Blueprint で [`render.yaml`](../render.yaml) を接続し、`whitekey-db` と Web Service（backend / frontend）を作成する
+2. 両方の Web Service とも **Auto-Deploy を Off**（`autoDeployTrigger: off`）にする
+3. backend: `DATABASE_URL` は `fromDatabase`（手貼りしない）。CORS オリジン等。frontend: `API_BASE_URL` 等
 4. 各サービスで **Deploy Hook URL** を発行する
 5. GitHub Secrets に登録する  
    - backend: `RENDER_DEPLOY_HOOK_URL`  
@@ -185,18 +195,16 @@ git push origin v0.00.01
 - 本番相当 Environment を使う場合は、手動承認（Required reviewers）の導入を検討する。
 - タグ付けとデプロイ実行の権限は、リポジトリ管理者またはリリース担当に限定する。
 - スキャン（Trivy 等）で Critical / High がある場合のデプロイ可否は、別途ポリシーとしてワークフローに組み込む。
+- DB 接続文字列（`DATABASE_URL`）はログやエラー応答に出さない。
 
 ## 今後の実装メモ
 
-本ドキュメントは設計メモである。実装時には次をリポジトリへ追加する想定。
-
-- [ ] Render Web Service（backend / frontend）の作成手順の確定。PostgreSQL は使わない
-- [x] backend `Dockerfile` および CSV 読み取りによる API 実装
-- [x] 初期データ用 CSV（`backend/data/messages.csv`）の追加
-- [x] GitHub Actions: PR 用の検証ワークフロー（`backend-verify.yml`）
+- [ ] Render Blueprint / Web Service（backend / frontend）と Free Postgres（`whitekey-db`）の接続確定
+- [x] backend Postgres 永続化・起動時 migrate・ローカル docker compose
+- [x] GitHub Actions: PR 用の検証ワークフロー（`backend-verify.yml`、Postgres サービス付き）
 - [x] GitHub Actions: デプロイ前のビルド／スキャン（`backend-pre-deploy.yml`、Render デプロイは未接続）
 - [x] GitHub Actions: タグ push で Release へセキュリティ成果物を添付（`backend-release.yml`）
 - [x] frontend Next.js スキャフォールド / Dockerfile / Verify・Release・Pre-Deploy
 - [ ] GitHub Actions: Render へのデプロイステップ追加（backend / frontend Deploy Hook）
 - [ ] `RENDER_DEPLOY_HOOK_URL` / `RENDER_FRONTEND_DEPLOY_HOOK_URL` の設定
-- [x] README を「手動リリースタグデプロイ」「CSV 仮想 DB」に合わせて更新
+- [x] README / アーキテクチャを PostgreSQL 方針に合わせて更新

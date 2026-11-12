@@ -10,12 +10,14 @@
 
 ```text
 WhiteKey-Experimentation-Site/
-├── backend/                 # Go API（DDD 風レイヤー、Docker、CSV 仮想 DB）
+├── backend/                 # Go API（DDD 風レイヤー、Docker、PostgreSQL）
 │   └── openapi/             # OpenAPI 仕様
 ├── frontend/                # Next.js（App Router、standalone Docker）
+├── render.yaml              # Render Blueprint（Postgres + 配線）
 ├── docs/                    # 設計ドキュメント
 └── .github/workflows/       # backend / frontend 用 GitHub Actions
 ```
+
 
 詳細設計:
 
@@ -47,18 +49,19 @@ WhiteKey-Experimentation-Site/
 [人間] Backend / Frontend Pre-Deploy をそれぞれ手動実行
        ↓ （Render 接続後）
 [Render.com]
-       ├── Web Service: Go API（Docker / CSV）
-       └── Web Service: Next.js（別 Docker / standalone）
+       ├── Web Service: Go API（Docker / PostgreSQL）
+       ├── Web Service: Next.js（別 Docker / standalone）
+       └── Render Postgres（Free: whitekey-db）
 ```
 
-PostgreSQL などのマネージド DB は採用しない（無料枠の寿命・低コスト方針のため）。データはリポジトリ同梱の CSV を仮想 DB とする。詳細は [docs/render.md](docs/render.md)。
+アプリデータは Render Postgres（Free）に置く。スキーマ正本はアプリ埋め込みマイグレーション。Free は約 30 日で期限切れするため再作成前提（詳細は [docs/render.md](docs/render.md)）。
 
 ### 技術スタック
 
 | 領域 | 採用技術 |
 | --- | --- |
-| ホスティング | Render.com（backend / frontend 別 Web Service）。デプロイ接続は準備中 |
-| Backend | Go（`net/http`）、Docker、CSV 仮想 DB、CORS |
+| ホスティング | Render.com（backend / frontend 別 Web Service + Postgres）。デプロイ接続は準備中 |
+| Backend | Go（`net/http`）、Docker、PostgreSQL、CORS |
 | Frontend | Next.js（App Router）、TypeScript、standalone Docker |
 | バージョン管理・CI/CD | GitHub / GitHub Actions |
 | セキュリティツール | golangci-lint / gosec、ESLint、Trivy、Syft（SBOM）、Grype。SCAP は今後 |
@@ -121,10 +124,10 @@ Cursor Automations / クラウド Agent は使わない。**push または PR �
 ### 機能要件
 
 - **エンドポイント:**
-  - `GET /` — CSV 既定メッセージを JSON で返す
+  - `GET /` — PostgreSQL 既定メッセージを JSON で返す
   - `GET /experiment/greet?name=` — 名前を埋め込んだ HTML 挨拶（埋め込み前に HTML エスケープ）
 - **動作仕様:**
-  1. 同梱 CSV（`backend/data/messages.csv`）からメッセージを取得する。
+  1. 起動時に migrate し、`messages` から id=`1` を取得する。
   2. `"Hello World"` を JSON（`{"message":"Hello World"}`）で返す。
   3. `/experiment/greet` はクエリ `name` を HTML へ埋め込む前にエスケープし、反射型 XSS を防ぐ（OpenAPI: [backend/openapi/openapi.yaml](backend/openapi/openapi.yaml)）。
 
@@ -137,7 +140,7 @@ curl http://localhost:8080/
 curl "http://localhost:8080/experiment/greet?name=%E3%81%97%E3%82%8D%E3%81%8B%E3%81%8E"
 ```
 
-環境変数（任意）: `ADDR`（既定 `:8080`）、`DATA_CSV_PATH`（コンテナ内既定 `/app/data/messages.csv`）、`CORS_ALLOWED_ORIGINS`（例: `http://localhost:3000`）。
+`api` と `db`（Postgres）が起動する。DB 資格情報は [backend/.env.example](backend/.env.example) を `backend/.env` にコピーして設定する（compose が読み込む）。その他: `ADDR`（既定 `:8080`）、`CORS_ALLOWED_ORIGINS`（例: `http://localhost:3000`）。
 
 ### Frontend（Next.js）
 

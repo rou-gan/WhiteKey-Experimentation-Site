@@ -20,6 +20,11 @@ env:
   ZAP_TARGET_FE: http://frontend:3000
   ZAP_TARGET_API: http://api:8080
   COMPOSE_FILE: .github/zap/docker-compose.yml
+  # CI-only non-secrets for .github/zap/docker-compose.yml (${VAR} substitution)
+  POSTGRES_USER: whitekey
+  POSTGRES_PASSWORD: whitekey
+  POSTGRES_DB: whitekey
+  DATABASE_URL: postgres://whitekey:whitekey@db:5432/whitekey?sslmode=disable
 
 jobs:
   zap:

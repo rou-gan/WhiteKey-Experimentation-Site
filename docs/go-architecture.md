@@ -9,7 +9,7 @@
 
 - **コンテキスト単位:** 機能ごとに `user` / `message` などのパッケージを切る（レイヤー横断で同じ名前空間を揃える）。
 - **依存の方向:** `handler` → `usecase` → `domain` ← `infrastructure`（infrastructure が domain のインターフェースを実装）。
-- **domain は外部依存ゼロ:** DB・HTTP・CSV ライブラリなどに依存しない。
+- **domain は外部依存ゼロ:** DB・HTTP・ドライバなどに依存しない。
 - **DI は起動時のみ:** 依存注入は `backend/cmd/server/main.go` に集約する。
 - **モノレポ:** Go コードは `backend/` 配下に置き、将来の `frontend/` と同居できる構成にする。
 - **公開範囲:** アプリ固有コードは原則 `internal/` 配下に置く。汎用ライブラリ化する予定がなければ `pkg/` は使わない。
@@ -32,18 +32,20 @@ WhiteKey-Experimentation-Site/
 │   │   │       └── usecase.go      # ユースケース実装
 │   │   ├── infrastructure/         # 技術的詳細・外部依存
 │   │   │   ├── persistence/
-│   │   │   │   └── user_repo.go    # 永続化の実装（CSV / RDB 等）
+│   │   │   │   ├── migrations/     # goose SQL（スキーマ正本）
+│   │   │   │   └── message_postgres.go
 │   │   │   └── config/
 │   │   └── handler/                # HTTP 等のエントリポイント
 │   │       └── http/
 │   │           └── user_handler.go
-│   ├── data/                       # 同梱データ（CSV 仮想 DB 等）
 │   ├── openapi/                    # OpenAPI 仕様（openapi.yaml）
 │   ├── Dockerfile
-│   ├── docker-compose.yml          # ローカル起動（backend）
+│   ├── docker-compose.yml          # ローカル起動（api + postgres）
+│   ├── .env.example                # ローカル DB 資格情報のひな形（.env は gitignore）
 │   ├── go.mod
 │   └── go.sum
-├── frontend/                       # （将来）フロントエンド
+├── frontend/
+├── render.yaml                     # Render Blueprint（Postgres + 配線）
 └── docs/
 ```
 
@@ -55,7 +57,7 @@ PoC（`GET /` で `"Hello World"` を返す）では、上記の `user` コン�
 | --- | --- | --- |
 | Domain | `internal/domain/<context>/` | エンティティ・値オブジェクト・ドメインサービス・リポジトリ IF |
 | Usecase | `internal/usecase/<context>/` | ユースケースの進行、入力 DTO、ドメイン／リポジトリの組み立て |
-| Infrastructure | `internal/infrastructure/` | CSV・設定・外部 API など技術詳細。domain の IF を実装 |
+| Infrastructure | `internal/infrastructure/` | PostgreSQL・マイグレーション・設定など技術詳細。domain の IF を実装 |
 | Handler | `internal/handler/http/` | HTTP 入出力、ステータスコード、JSON / テキスト変換 |
 | Cmd | `cmd/server/` | DI とプロセス起動のみ。ビジネスロジックを書かない |
 
@@ -181,52 +183,11 @@ func (r *userRepository) FindByID(ctx context.Context, id user.ID) (*user.User, 
 }
 ```
 
-本プロジェクトの永続化方針は CSV 仮想 DB である（詳細は [render.md](./render.md)）。実装時は上記と同型の IF 実装を、CSV 読み書きに置き換える。
-
-```go
-// 概念例: CSV 実装も同じ Repository を満たす
-func NewUserCSVRepository(path string) user.Repository {
-	return &userCSVRepository{path: path}
-}
-```
+本プロジェクトの永続化方針は PostgreSQL である（詳細は [render.md](./render.md)）。スキーマ正本は goose マイグレーション（embed）。起動時に migrate up する。
 
 ### 4. 起動処理（`cmd/server/main.go`）
 
-すべての依存関係を組み立てる（Dependency Injection）場所とする。
-
-`main.go`
-
-```go
-package main
-
-import (
-	"database/sql"
-	"log"
-	"net/http"
-
-	userhttp "my-project/internal/handler/http"
-	"my-project/internal/infrastructure/persistence"
-	userUseCase "my-project/internal/usecase/user"
-)
-
-func main() {
-	db, err := sql.Open("mysql", "user:pass@tcp(127.0.0.1:3306)/dbname")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 依存関係の注入
-	userRepo := persistence.NewUserRepository(db)
-	userUC := userUseCase.NewUseCase(userRepo)
-	userHandler := userhttp.NewUserHandler(userUC)
-
-	// ルーティング設定 & サーバー起動
-	http.HandleFunc("/users", userHandler.Register)
-	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-```
-
-本プロジェクトの PoC では、MySQL ではなく CSV リポジトリを注入し、`GET /` 用ハンドラを登録する。
+すべての依存関係を組み立てる（Dependency Injection）場所とする。PoC では `DATABASE_URL` 必須、migrate 後に `MessagePostgresRepository` を注入し、`GET /` 用ハンドラを登録する。
 
 ## 本プロジェクト PoC への当てはめ
 
@@ -234,18 +195,19 @@ func main() {
 | --- | --- |
 | コンテキスト | `message`（表示メッセージ） |
 | エンドポイント | `GET /` |
-| ユースケース例 | CSV からメッセージを取得して返す |
-| 永続化 | `internal/infrastructure/persistence` の CSV 実装 |
-| データ正本 | リポジトリ同梱 CSV（例: `backend/data/messages.csv`） |
+| ユースケース例 | PostgreSQL からメッセージを取得して返す |
+| 永続化 | `internal/infrastructure/persistence` の Postgres 実装 |
+| スキーマ正本 | goose SQL（`persistence/migrations/`）。シードに Hello World |
 
 依存の流れ（PoC）:
 
 ```text
 backend/cmd/server
+  → migrate (goose embed)
   → backend/internal/handler/http (GET /)
     → usecase/message
       → domain/message (Entity + Repository IF)
-      ← infrastructure/persistence (CSV Repository 実装)
+      ← infrastructure/persistence (Postgres Repository 実装)
 ```
 
 ## 依存関係ルール（守ること）
@@ -260,6 +222,6 @@ backend/cmd/server
 
 - [x] `backend/go.mod` のモジュールパス確定（`.../backend`）
 - [x] `backend/cmd/server/main.go` のスケルトン作成
-- [x] PoC 用 `message` コンテキスト（domain / usecase / handler / CSV persistence）
-- [x] `backend/data/messages.csv` の追加
-- [ ] レイヤー境界を崩さないための簡易テスト（domain / usecase 中心）
+- [x] PoC 用 `message` コンテキスト（domain / usecase / handler / Postgres persistence）
+- [x] goose マイグレーションと起動時 migrate
+- [x] レイヤー境界の UT（domain / usecase / handler / infra）

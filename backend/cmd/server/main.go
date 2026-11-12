@@ -1,10 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	handlerhttp "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/handler/http"
 	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/infrastructure/persistence"
@@ -12,10 +15,30 @@ import (
 )
 
 func main() {
-	csvPath := envOrDefault("DATA_CSV_PATH", "data/messages.csv")
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		log.Fatal("DATABASE_URL is required")
+	}
 	addr := envOrDefault("ADDR", ":8080")
 
-	repo := persistence.NewMessageCSVRepository(csvPath)
+	db, err := sql.Open("pgx", databaseURL)
+	if err != nil {
+		log.Fatalf("open database: %v", err)
+	}
+	defer db.Close()
+
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(time.Hour)
+
+	if err := db.Ping(); err != nil {
+		log.Fatalf("ping database: %v", err)
+	}
+	if err := persistence.Migrate(db); err != nil {
+		log.Fatalf("migrate: %v", err)
+	}
+
+	repo := persistence.NewMessagePostgresRepository(db)
 	uc := messageuc.NewUseCase(repo)
 	h := handlerhttp.NewMessageHandler(uc)
 	xssH := handlerhttp.NewXSSExperimentHandler()
@@ -37,7 +60,7 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	log.Printf("listening on %s (csv=%s)", addr, csvPath)
+	log.Printf("listening on %s", addr)
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}

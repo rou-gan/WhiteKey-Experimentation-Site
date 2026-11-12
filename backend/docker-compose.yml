@@ -1,4 +1,20 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - whitekey_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   api:
     build:
       context: .
@@ -8,5 +24,11 @@ services:
       - "8080:8080"
     environment:
       ADDR: ":8080"
-      DATA_CSV_PATH: /app/data/messages.csv
-    # Free-tier style: no external DB; CSV is baked into the image.
+      DATABASE_URL: ${DATABASE_URL}
+      CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://127.0.0.1:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  whitekey_pgdata:

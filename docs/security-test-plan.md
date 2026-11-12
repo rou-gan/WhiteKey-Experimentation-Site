@@ -42,7 +42,7 @@
 ### In Scope
 
 - Go アプリケーション（`cmd/` / `internal/`）
-- 同梱 CSV（仮想 DB）とその読み取り処理
+- PostgreSQL 永続化（migrations / repository）とその接続設定
 - Next.js フロントエンド（`frontend/`）
 - Dockerfile / コンテナイメージ（backend / frontend それぞれ）
 - GitHub Actions 上のセキュリティジョブ
@@ -171,8 +171,8 @@ DDD 構成では、主に `domain` / `usecase` / `handler` にテストを配置
 #### インジェクション対策テスト
 
 - 不正入力（SQL 断片、特殊文字、過長文字列、制御文字など）を与えても、期待どおり拒否または無害化されることを検証する。
-- 本プロジェクトは CSV 仮想 DB のため、RDB のプリペアドステートメントに加え、**CSV パース／パス操作／式展開に相当する不安全な扱いが無いこと**を重点確認する。
-- 将来 RDB を再導入する場合に備え、リポジトリ IF 経由のテストで「文字列連結クエリを書かない」方針を維持できる形にしておく。
+- PostgreSQL へのアクセスはプリペアドステートメント（または同等のパラメータバインド）を用い、**文字列連結でクエリを組み立てないこと**を重点確認する。
+- リポジトリ IF 経由のテストで、ID 等の入力を不透明値として渡し SQL 断片として解釈しない方針を維持する。
 - **OS コマンドインジェクション:** backend `internal/experiment/cmdinject` と frontend `lib/experiment/cmdinject` で、シェル連結を避け argv + 入力検証する UT を置く（実験ブランチでは意図的に失敗させることがある）。
 
 #### アクセス制御・認証テスト（将来拡張の基礎）
@@ -187,7 +187,7 @@ DDD 構成では、主に `domain` / `usecase` / `handler` にテストを配置
   - スタックトレース
   - 内部ファイルパス
   - 環境変数・秘密情報
-  - CSV の生データや実装詳細の過剰な露出
+  - DB の生データや実装詳細の過剰な露出
 - HTTP ハンドラテストで、クライアント向けメッセージが汎用的であることを確認する。
 
 ### CI/CD 統合
@@ -296,7 +296,7 @@ Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Au
 
 - Workflow: [`.github/workflows/zap-dast.yml`](../.github/workflows/zap-dast.yml)
 - AF 計画: [`.github/zap/plan.yaml`](../.github/zap/plan.yaml)
-- CI 用 compose: [`.github/zap/docker-compose.yml`](../.github/zap/docker-compose.yml)
+- CI 用 compose: [`.github/zap/docker-compose.yml`](../.github/zap/docker-compose.yml)（DB 資格情報は workflow の env で `${VAR}` 注入）
 
 ### 受け入れ条件
 
@@ -375,7 +375,7 @@ Phase 6  Semgrep（GHA ゲート + Phase A Skills）
 - 無料枠・実行時間制限により、重いスキャンはリリースパイプライン側へ寄せる場合がある。
 - Artifact の容量・保持期間にも無料枠制約があるため、巨大な中間成果物は置かない。
 - gosec の誤検知は、安易な全面 disable ではなくルール単位・行単位で最小化して管理する。
-- CSV 正本はリポジトリ管理のため、**機微データを CSV に置かない**（テスト用もダミーデータ）。
+- DB シード／マイグレーションには**機微データを置かない**（テスト用もダミーデータ）。
 - Secrets（Deploy Hook 等）はテストログおよび Artifact へ出力しない。
 
 ## ローカルセキュリティレビュー（Phase A）
