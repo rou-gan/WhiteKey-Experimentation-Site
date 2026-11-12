@@ -1,12 +1,15 @@
 # OWASP ZAP Automation Framework plan
 # Baseline 相当（spider + パッシブ）+ OpenAPI 取り込み。activeScan なし。
 # High 以上で exit 1（exitStatus）。
+# /experiment/* は意図的ドリルのため OpenAPI import / spider 対象外（context 除外が openapi にも効く）。
 env:
   contexts:
     - name: whitekey
       urls:
         - "${ZAP_TARGET_FE}"
         - "${ZAP_TARGET_API}"
+      excludePaths:
+        - ".*/experiment/.*"
   parameters:
     failOnError: true
     failOnWarning: false
