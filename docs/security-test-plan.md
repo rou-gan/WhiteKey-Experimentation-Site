@@ -296,7 +296,7 @@ Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Au
 
 - Workflow: [`.github/workflows/zap-dast.yml`](../.github/workflows/zap-dast.yml)
 - AF 計画: [`.github/zap/plan.yaml`](../.github/zap/plan.yaml)
-- CI 用 compose: [`.github/zap/docker-compose.yml`](../.github/zap/docker-compose.yml)（DB 資格情報は workflow の env で `${VAR}` 注入）
+- CI 用 compose: [`.github/zap/docker-compose.yml`](../.github/zap/docker-compose.yml)（DB パスワードはジョブ開始時に乱数生成し `${VAR}` 注入。YAML に平文パスは置かない）
 
 ### 受け入れ条件
 
