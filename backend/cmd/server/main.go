@@ -11,6 +11,7 @@ import (
 
 	handlerhttp "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/handler/http"
 	"github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/infrastructure/persistence"
+	memberuc "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/usecase/member"
 	messageuc "github.com/rou-gan/WhiteKey-Experimentation-Site/backend/internal/usecase/message"
 )
 
@@ -41,11 +42,22 @@ func main() {
 	repo := persistence.NewMessagePostgresRepository(db)
 	uc := messageuc.NewUseCase(repo)
 	h := handlerhttp.NewMessageHandler(uc)
+
+	memberRepo := persistence.NewMemberPostgresRepository(db)
+	challenges := persistence.NewMemberChallengePostgresStore(db)
+	sessions := persistence.NewMemberSessionPostgresStore(db)
+	memberUC := memberuc.NewUseCase(memberRepo, challenges, sessions)
+	memberH := handlerhttp.NewMemberHandler(memberUC)
+
 	xssH := handlerhttp.NewXSSExperimentHandler()
 	cmdH := handlerhttp.NewCmdInjectExperimentHandler()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", h.GetRoot)
+	mux.HandleFunc("/members", memberH.Register)
+	mux.HandleFunc("/members/auth/challenge", memberH.IssueChallenge)
+	mux.HandleFunc("/members/auth/verify", memberH.VerifyResponse)
+	mux.HandleFunc("/members/me", memberH.DeleteMe)
 	// HTML 埋め込み時のエスケープ（XSS 防止）を示す実験・教育用エンドポイント。
 	mux.HandleFunc("/experiment/greet", xssH.Greet)
 	// OS コマンドインジェクション対策の確認用（検証済み argv で ping）。

@@ -6,10 +6,11 @@ info:
     PostgreSQL からメッセージを取得して返すほか、
     HTML 埋め込み時のエスケープ（反射型 XSS 防止）を示すエンドポイントを含む。
     OS コマンドインジェクション実験用の ping エンドポイントを含む（教育・UT 用）。
+    会員登録・チャレンジレスポンス認証・論理削除（`EDS-MEM-1`）を含む。
     ブラウザ（frontend）からの呼び出し向けに CORS を付与する。
     許可オリジンは環境変数 `CORS_ALLOWED_ORIGINS`（カンマ区切り）。未設定時は
     `http://localhost:3000` と `http://127.0.0.1:3000`。
-  version: 0.0.5
+  version: 0.1.0
   contact:
     name: WhiteKey Experimentation Site
 
@@ -22,6 +23,8 @@ servers:
 tags:
   - name: message
     description: 表示メッセージ
+  - name: member
+    description: 会員（登録・チャレンジレスポンス認証・論理削除）。外部設計 `EDS-MEM-1`
   - name: experiment
     description: セキュリティ実験・教育用エンドポイント
 
@@ -59,6 +62,137 @@ paths:
               schema:
                 type: string
                 example: internal server error
+
+  /members:
+    post:
+      tags:
+        - member
+      operationId: registerMember
+      summary: 会員を登録する
+      description: |
+        ログインID・パスワード・ニックネームで有効会員を作成する（`EDS-MEM-1` F-01）。
+        サーバはソルトを生成し Argon2id で秘密値を導出して保存する（平文パスワードは保存しない）。
+        登録時のみリクエストに平文パスワードが含まれる。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberRegisterRequest"
+            examples:
+              valid:
+                value:
+                  loginId: member01
+                  password: "Abcd123!"
+                  nickname: しろかぎ
+      responses:
+        "201":
+          description: 登録成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemberRegisterResponse"
+        "400":
+          description: 入力不正（項目名・値はエコーしない汎用メッセージ）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericError"
+        "409":
+          description: ログインIDまたはニックネームの重複（どちらが重複かは出さない）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericError"
+
+  /members/auth/challenge:
+    post:
+      tags:
+        - member
+      operationId: createAuthChallenge
+      summary: 認証挑戦を発行する
+      description: |
+        ログインIDに対する挑戦・ソルトを返す（`EDS-MEM-1` F-02）。
+        未登録・削除済みでも **200** とダミー値を返し、登録有無を漏らさない。
+        クライアントは `secret = Argon2id(password, salt)` ののち
+        `response = Base64(HMAC-SHA256(secret, challenge_bytes))` を計算する。
+        Argon2id 最低ライン: m=19456 KiB, t=2, p=1, 出力32バイト以上, salt16バイト以上。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthChallengeRequest"
+      responses:
+        "200":
+          description: 挑戦発行（登録有無を問わない）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthChallengeResponse"
+        "400":
+          description: 入力形式不正（汎用）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericError"
+
+  /members/auth/verify:
+    post:
+      tags:
+        - member
+      operationId: verifyAuthResponse
+      summary: 認証応答を検証する
+      description: |
+        挑戦IDと応答を検証し、成功時にセッショントークンを返す（`EDS-MEM-1` F-03）。
+        挑戦不明・期限切れ・不一致・削除済みなどはすべて **401** の同一汎用応答。
+        成功後、当該挑戦は再利用不可。セッション寿命は有限（目安: 数時間）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthVerifyRequest"
+      responses:
+        "200":
+          description: 認証成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthVerifyResponse"
+        "401":
+          description: 認証失敗（理由を区別しない汎用）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericError"
+
+  /members/me:
+    delete:
+      tags:
+        - member
+      operationId: deleteCurrentMember
+      summary: 認証済み会員を論理削除する
+      description: |
+        自身の会員を論理削除し、ログインID・秘密値・ニックネームをマスクする（`EDS-MEM-1` F-04）。
+        行は物理削除しない。当該会員のセッションは無効化する。復元は提供しない。
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: 削除成功（ボディなし）
+        "401":
+          description: 未認証またはセッション無効（汎用）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericError"
+        "404":
+          description: 対象不可（既に削除済み等。詳細は出さない）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenericError"
 
   /experiment/greet:
     get:
@@ -149,6 +283,15 @@ paths:
           description: 許可されていない HTTP メソッド
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+      description: |
+        `POST /members/auth/verify` が返す `sessionToken` を
+        `Authorization: Bearer <token>` で提示する。
+
   schemas:
     MessageResponse:
       type: object
@@ -159,3 +302,123 @@ components:
           type: string
           description: 表示用メッセージ本文
           example: Hello World
+
+    GenericError:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          description: クライアント向け汎用メッセージ（内部詳細・項目列挙なし）
+          example: request failed
+
+    MemberRegisterRequest:
+      type: object
+      required:
+        - loginId
+        - password
+        - nickname
+      properties:
+        loginId:
+          type: string
+          description: 半角英数字のみ。長さ 8〜15
+          minLength: 8
+          maxLength: 15
+          pattern: "^[A-Za-z0-9]+$"
+          example: member01
+        password:
+          type: string
+          description: |
+            半角。長さ 8〜15。英字・数字・記号をそれぞれ1文字以上。
+            許可記号は次の32文字のみ（空白・これ以外の記号・全角は不可）:
+            !"#$%&'()*+,-./:;<=>?@[\]^_`{|}~
+            （EDS-MEM-1 §6 と同一）
+          minLength: 8
+          maxLength: 15
+          format: password
+          example: "Abcd123!"
+        nickname:
+          type: string
+          description: 1〜50 ルーン。前後空白のみは不可。有効会員間で一意
+          minLength: 1
+          maxLength: 50
+          example: しろかぎ
+
+    MemberRegisterResponse:
+      type: object
+      required:
+        - loginId
+        - nickname
+      properties:
+        loginId:
+          type: string
+          example: member01
+        nickname:
+          type: string
+          example: しろかぎ
+
+    AuthChallengeRequest:
+      type: object
+      required:
+        - loginId
+      properties:
+        loginId:
+          type: string
+          description: 登録時と同じ形式。未登録でも挑戦応答の形は同じ
+          minLength: 8
+          maxLength: 15
+          pattern: "^[A-Za-z0-9]+$"
+          example: member01
+
+    AuthChallengeResponse:
+      type: object
+      required:
+        - challengeId
+        - salt
+        - challenge
+      properties:
+        challengeId:
+          type: string
+          description: 応答検証時に返す挑戦の識別子
+          example: chal_01HXYZ
+        salt:
+          type: string
+          description: Base64。秘密値導出用（未登録時はダミー）
+          format: byte
+        challenge:
+          type: string
+          description: Base64。一度きり有効な乱数（生バイトが HMAC のメッセージ）
+          format: byte
+
+    AuthVerifyRequest:
+      type: object
+      required:
+        - challengeId
+        - response
+      properties:
+        challengeId:
+          type: string
+          example: chal_01HXYZ
+        response:
+          type: string
+          description: Base64(HMAC-SHA256(secret, challenge_bytes))
+          format: byte
+
+    AuthVerifyResponse:
+      type: object
+      required:
+        - sessionToken
+        - nickname
+        - expiresAt
+      properties:
+        sessionToken:
+          type: string
+          description: 不透明なセッショントークン（Bearer）
+        nickname:
+          type: string
+          description: 表示用ニックネーム
+        expiresAt:
+          type: string
+          format: date-time
+          description: セッション有効期限（RFC3339）。寿命は有限（目安: 数時間）
