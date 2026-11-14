@@ -37,7 +37,7 @@
 
 | 項目 | 内容 |
 | --- | --- |
-| 起動方法 | `backend` の Docker Compose（API + Postgres）＋ migrate |
+| 起動方法 | プロセス内（`httptest` + `main` 相当の member 配線）＋ Postgres（`TEST_DATABASE_URL` / Compose `db`）＋ migrate |
 | データ初期状態 | 会員テーブルは空（またはテスト用に truncate） |
 | 観測手段 | HTTP status / JSON、DB の status・マスク後 loginId/nickname、セッション無効化後の API 結果 |
 | クライアント計算 | OpenAPI / EDS §7 どおり。`secret = Argon2id(password, salt)`、`response = Base64(HMAC-SHA256(secret, challenge_bytes))` |
