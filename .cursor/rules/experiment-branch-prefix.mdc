@@ -23,10 +23,9 @@ experiment/scap-poc
 | プレフィックス | 用途 |
 | --- | --- |
 | `experiment/` | 実験・検証・意図的な失敗確認 |
-| `feature/` | 本番／本線に入れる機能開発（トピック／作業の切り方は `branch-workflow` ルール） |
+| `feature/` | 本番／本線に入れる機能開発 |
 
 ## 注意
 
 - 実験ブランチはマージ前提にしないことが多い。終了後は削除してよい。
-- 機能開発のマージ経路（作業→トピック→main）は `.cursor/rules/branch-workflow.mdc` を正とする。
 - `Backend Verify` は feature / experiment では **PR 作成時のみ**動く（ブランチへの push だけでは動かない。二重起動防止）。
