@@ -10,8 +10,8 @@ alwaysApply: true
 
 ## ドキュメントの置き場
 
-- 計画: `docs/it/plans/IT-<機能>-NNN.md`（ひな形: `docs/it/plans/_TEMPLATE.md`）
-- 実行記録: `docs/it/runs/YYYY-MM-DD-IT-<機能>-NNN.md`（ひな形: `docs/it/runs/_TEMPLATE.md`）
+- 計画: `docs/it/plans/IT-<機能>-N.md`（ひな形: `docs/it/plans/_TEMPLATE.md`。`N` は `1` から）
+- 実行記録: `docs/it/runs/YYYY-MM-DD-IT-<機能>-N.md`（ひな形: `docs/it/runs/_TEMPLATE.md`）
 - 運用説明: `docs/it/README.md`
 - 番号規約: `docs/README.md` / `.cursor/rules/docs-numbering.mdc`
 
@@ -32,7 +32,7 @@ UT に任せるものを Out に明示する。
 | シナリオID | 目的（「〜すること」） | 前提データ | 手順（要約） | 期待 | EDS | UT |
 | --- | --- | --- | --- | --- | --- | --- |
 
-- シナリオID: `IT-<機能>-NNN-Snn`
+- シナリオID: `IT-<機能>-N-Snn`
 - 各行は **複数 API／層をまたぐ1本の筋**
 - 期待は観測可能であること（HTTP status / JSON、DB の論理削除・マスク後の値など）
 - EDS 列で機能IDまたは節を指す。UT 列は任意（関連ケースがあれば）
