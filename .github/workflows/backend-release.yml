@@ -57,7 +57,7 @@ jobs:
 
       - name: Run tests
         working-directory: backend
-        run: go test -v -coverprofile=coverage.out ./...
+        run: go test -p 1 -v -coverprofile=coverage.out ./...
 
       - name: Build Docker image
         run: docker build -t "${IMAGE_NAME}" ./backend

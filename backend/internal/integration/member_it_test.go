@@ -59,7 +59,8 @@ func openIT(t *testing.T) *itEnv {
 	if err := persistence.Migrate(db); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	truncateMemberTables(t, db)
+	// テーブル全消しはしない（並列パッケージ実行時に persistence UT と競合するため）。
+	// 各シナリオは一意 loginId/nickname で衝突を避ける。
 
 	memberRepo := persistence.NewMemberPostgresRepository(db)
 	challenges := persistence.NewMemberChallengePostgresStore(db)
@@ -74,16 +75,6 @@ func openIT(t *testing.T) *itEnv {
 	mux.HandleFunc("/members/me", h.DeleteMe)
 
 	return &itEnv{db: db, mux: mux}
-}
-
-func truncateMemberTables(t *testing.T, db *sql.DB) {
-	t.Helper()
-	_, err := db.Exec(`
-		TRUNCATE member_sessions, member_auth_challenges, members RESTART IDENTITY CASCADE
-	`)
-	if err != nil {
-		t.Fatalf("truncate: %v", err)
-	}
 }
 
 func uniqueLogin(t *testing.T) string {
