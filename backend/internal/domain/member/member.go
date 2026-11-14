@@ -126,6 +126,29 @@ func (m *Member) DeletedAt() *time.Time {
 	return &t
 }
 
+// ValidateLoginID exposes login ID rules for challenge issuance.
+func ValidateLoginID(loginID string) error {
+	return validateLoginID(loginID)
+}
+
+// Reconstitute rebuilds a member from persistence (no validation).
+func Reconstitute(id, loginID, nickname string, status Status, salt, secret []byte, deletedAt *time.Time) *Member {
+	var del *time.Time
+	if deletedAt != nil {
+		t := *deletedAt
+		del = &t
+	}
+	return &Member{
+		id:        id,
+		loginID:   loginID,
+		nickname:  nickname,
+		status:    status,
+		salt:      append([]byte(nil), salt...),
+		secret:    append([]byte(nil), secret...),
+		deletedAt: del,
+	}
+}
+
 func validateLoginID(loginID string) error {
 	n := len(loginID)
 	if n < 8 || n > 15 {
