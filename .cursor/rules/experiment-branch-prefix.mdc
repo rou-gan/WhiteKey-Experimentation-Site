@@ -24,6 +24,7 @@ experiment/scap-poc
 | --- | --- |
 | `experiment/` | 実験・検証・意図的な失敗確認 |
 | `feature/` | 本番／本線に入れる機能開発（トピック／作業・予約番号は `branch-workflow` ルール） |
+| `fix/` | main 上のバグ・CI flaky など短い修正（`main` から切り `main` 向け PR。番号は使わない） |
 
 ## 注意
 
