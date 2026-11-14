@@ -1,0 +1,32 @@
+---
+description: 外部設計・UT・結合テスト文書の置き場、文書ID、テンプレート必須、機能ごとEDS1冊
+alwaysApply: true
+---
+
+# 設計・テスト文書の番号規約
+
+正本の索引: `docs/README.md`
+
+## 置き場と ID
+
+| 種別 | 置き場 | 文書ID / ファイル名 |
+| --- | --- | --- |
+| 外部設計 | `docs/eds/` | `EDS-<機能>-NNN.md` |
+| UT 計画 | `docs/ut/plans/` | `UT-<機能>-NNN.md` |
+| UT 実行 | `docs/ut/runs/` | `YYYY-MM-DD-UT-<機能>-NNN.md` |
+| 結合計画 | `docs/it/plans/` | `IT-<機能>-NNN.md` |
+| 結合実行 | `docs/it/runs/` | `YYYY-MM-DD-IT-<機能>-NNN.md` |
+
+- **ファイル名（拡張子除く）＝文書ID**。
+- 新規作成時は必ず対応する `_TEMPLATE.md` をコピーする。
+- ヘッダ必須: `文書ID` / `機能` / `版` / `状態`（`draft` / `approved`） / `関連文書`。
+- 機能コードは `docs/README.md` の表に無いものを勝手に増やさない。増やすときは先に表へ追記する。
+
+## 外部設計
+
+- **機能ごと原則1冊**。会員（`MEM`）は登録・認証・論理削除を `EDS-MEM-001` にまとめる。
+- パッケージ構成・SQL など内部実装は書かない（`docs/go-architecture.md` 等へリンク）。
+
+## 計画と実装の順序
+
+- UT / IT 計画が `approved` になるまで、対応するテストコードを新規作成しない（既存 UT ルール・IT ルールに従う）。
