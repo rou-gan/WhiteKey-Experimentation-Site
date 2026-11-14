@@ -74,7 +74,7 @@ jobs:
           args: --timeout=5m
 
       - name: Run tests
-        # -p 1: 同一 TEST_DATABASE_URL を触る integration / persistence の並列 TRUNCATE 競合を防ぐ
+        # -p 1: 同一 TEST_DATABASE_URL を触る integration / persistence のパッケージ並列を防ぐ
         run: go test -p 1 -v -coverprofile=coverage.out ./...
 
       - name: Upload test coverage
