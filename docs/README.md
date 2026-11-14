@@ -40,6 +40,16 @@
 - 文書ヘッダに必ず書く: `文書ID` / `機能` / `版` / `状態`（`draft` / `approved`） / `関連文書`。
 - ブランチ番号（`feature/1-member`）と文書番号は独立してよい。
 
+### ブランチ番号の予約
+
+ブランチの `<番号>`（`feature/<番号>-…`）のうち、次は **取り消し専用** とし、通常機能のトピックに使わない。詳細は [.cursor/rules/branch-workflow.mdc](../.cursor/rules/branch-workflow.mdc)。
+
+| 番号 | 用途 | 例 |
+| --- | --- | --- |
+| `1` | 会員（member）トピック | `feature/1-member` |
+| `2` | **取り消し（revert）専用** | `feature/2-revert-main-eds` |
+| `3` 以降 | 次の通常機能から採番 | |
+
 ## 新しい文書の作り方
 
 1. 対応する `_TEMPLATE.md` をコピーする。
