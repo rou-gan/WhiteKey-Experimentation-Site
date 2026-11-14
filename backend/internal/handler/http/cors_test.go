@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -61,5 +62,17 @@ func TestCORS_OptionsPreflight(t *testing.T) {
 
 	if rr.Code != http.StatusNoContent {
 		t.Fatalf("status = %d", rr.Code)
+	}
+	methods := rr.Header().Get("Access-Control-Allow-Methods")
+	for _, want := range []string{"GET", "POST", "DELETE", "OPTIONS"} {
+		if !strings.Contains(methods, want) {
+			t.Fatalf("Allow-Methods = %q, want %s", methods, want)
+		}
+	}
+	headers := rr.Header().Get("Access-Control-Allow-Headers")
+	for _, want := range []string{"Content-Type", "Authorization"} {
+		if !strings.Contains(headers, want) {
+			t.Fatalf("Allow-Headers = %q, want %s", headers, want)
+		}
 	}
 }
