@@ -5,11 +5,11 @@
 | 文書ID | `IT-MEM-1` |
 | 機能 | `MEM`（会員） |
 | 版 | `0.1` |
-| 状態 | `draft` |
+| 状態 | `approved` |
 | 関連文書 | EDS: [EDS-MEM-1](../../eds/EDS-MEM-1.md) / OpenAPI: `backend/openapi/openapi.yaml` / UT: [UT-MEM-1](../../ut/plans/UT-MEM-1.md) |
 
 `.cursor/rules/it-plan.mdc` に沿った計画。  
-結合テストコードは本計画が `approved` になるまで作らない。
+本計画は `approved`。結合テストコードはこのシナリオ表に従う。
 
 関連: [docs/it/README.md](../README.md) / [docs/README.md](../../README.md)
 

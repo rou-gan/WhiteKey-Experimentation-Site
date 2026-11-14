@@ -5,11 +5,11 @@
 | 文書ID | `UT-MEM-1` |
 | 機能 | `MEM`（会員） |
 | 版 | `0.1` |
-| 状態 | `draft` |
+| 状態 | `approved` |
 | 関連文書 | EDS: [EDS-MEM-1](../../eds/EDS-MEM-1.md)（v0.3・許可記号一覧あり） / OpenAPI: `backend/openapi/openapi.yaml` / IT: `docs/it/plans/IT-MEM-1`（未作成） |
 
 `.cursor/rules/ut-plan-go-api.mdc` に沿った計画。  
-実装パッケージ名は [go-architecture.md](../../go-architecture.md) の `member` コンテキスト想定。コード・`_test.go` は本計画が `approved` になるまで作らない。
+実装パッケージ名は [go-architecture.md](../../go-architecture.md) の `member` コンテキスト想定。本計画は `approved`。実装・`_test.go` はこの表に従う。
 
 関連: [docs/ut/README.md](../README.md) / [docs/README.md](../../README.md)
 
