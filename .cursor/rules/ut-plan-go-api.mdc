@@ -9,8 +9,8 @@ UT の **計画** または **作成** を行うときは、本ルールに従�
 
 ## ドキュメントの置き場
 
-- 計画: `docs/ut/plans/UT-<機能>-N.md`（ひな形は `docs/ut/plans/_TEMPLATE.md`。`N` は `1` から）
-- 実行記録: `docs/ut/runs/YYYY-MM-DD-UT-<機能>-N.md`（ひな形は `docs/ut/runs/_TEMPLATE.md`）
+- 計画: `docs/ut/plans/UT-<機能>-NNN.md`（ひな形は `docs/ut/plans/_TEMPLATE.md`）
+- 実行記録: `docs/ut/runs/YYYY-MM-DD-UT-<機能>-NNN.md`（ひな形は `docs/ut/runs/_TEMPLATE.md`）
 - 運用説明: `docs/ut/README.md`
 - 番号規約: `docs/README.md` / `.cursor/rules/docs-numbering.mdc`
 
@@ -18,7 +18,7 @@ UT の **計画** または **作成** を行うときは、本ルールに従�
 
 ## フェーズ
 
-1. **計画のみ**（コード・`_test.go` 禁止）。`_TEMPLATE.md` をコピーして `UT-<機能>-N.md` に責務リストとケース表を書く。人が承認する（状態 `approved`）まで実装しない。
+1. **計画のみ**（コード・`_test.go` 禁止）。`_TEMPLATE.md` をコピーして `UT-<機能>-NNN.md` に責務リストとケース表を書く。人が承認する（状態 `approved`）まで実装しない。
 2. 承認後に table-driven / 既存スタイルでテストコードを書く。
 3. 既存テストの `// 目的: …すること。` と同じ具体度にする。ケースIDがある場合は `// ケース: …` も付ける。
 4. 実行後は `docs/ut/runs/_TEMPLATE.md` をコピーし、計画ケース表＋**結果**列で残す（フルログは残さない）。

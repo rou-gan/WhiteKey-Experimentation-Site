@@ -2,11 +2,11 @@
 
 | 項目 | 値 |
 | --- | --- |
-| 計画文書ID | `UT-<機能>-N` |
+| 計画文書ID | `UT-<機能>-NNN` |
 | 日付 | YYYY-MM-DD |
 | ブランチ |  |
 | commit |  |
-| 計画 | `docs/ut/plans/UT-<機能>-N.md` |
+| 計画 | `docs/ut/plans/UT-<機能>-NNN.md` |
 | コマンド | 下記 |
 
 ```text

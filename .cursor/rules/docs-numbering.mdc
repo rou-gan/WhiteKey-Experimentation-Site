@@ -11,13 +11,12 @@ alwaysApply: true
 
 | 種別 | 置き場 | 文書ID / ファイル名 |
 | --- | --- | --- |
-| 外部設計 | `docs/eds/` | `EDS-<機能>-N.md` |
-| UT 計画 | `docs/ut/plans/` | `UT-<機能>-N.md` |
-| UT 実行 | `docs/ut/runs/` | `YYYY-MM-DD-UT-<機能>-N.md` |
-| 結合計画 | `docs/it/plans/` | `IT-<機能>-N.md` |
-| 結合実行 | `docs/it/runs/` | `YYYY-MM-DD-IT-<機能>-N.md` |
+| 外部設計 | `docs/eds/` | `EDS-<機能>-NNN.md` |
+| UT 計画 | `docs/ut/plans/` | `UT-<機能>-NNN.md` |
+| UT 実行 | `docs/ut/runs/` | `YYYY-MM-DD-UT-<機能>-NNN.md` |
+| 結合計画 | `docs/it/plans/` | `IT-<機能>-NNN.md` |
+| 結合実行 | `docs/it/runs/` | `YYYY-MM-DD-IT-<機能>-NNN.md` |
 
-- `<N>` は同一種別・同一機能内の連番（`1` から。ゼロ埋めしない）。
 - **ファイル名（拡張子除く）＝文書ID**。
 - 新規作成時は必ず対応する `_TEMPLATE.md` をコピーする。
 - ヘッダ必須: `文書ID` / `機能` / `版` / `状態`（`draft` / `approved`） / `関連文書`。
@@ -25,7 +24,7 @@ alwaysApply: true
 
 ## 外部設計
 
-- **機能ごと原則1冊**。会員（`MEM`）は登録・認証・論理削除を `EDS-MEM-1` にまとめる。
+- **機能ごと原則1冊**。会員（`MEM`）は登録・認証・論理削除を `EDS-MEM-001` にまとめる。
 - パッケージ構成・SQL など内部実装は書かない（`docs/go-architecture.md` 等へリンク）。
 
 ## 計画と実装の順序
