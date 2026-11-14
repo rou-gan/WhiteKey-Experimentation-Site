@@ -1,10 +1,13 @@
-# UT 実行記録: \<context\>
+# UT 実行記録: \<文書ID\>
 
-- 日付:
-- ブランチ:
-- commit:
-- 計画: `docs/ut/plans/<context>.md`
-- コマンド:
+| 項目 | 値 |
+| --- | --- |
+| 計画文書ID | `UT-<機能>-NNN` |
+| 日付 | YYYY-MM-DD |
+| ブランチ |  |
+| commit |  |
+| 計画 | `docs/ut/plans/UT-<機能>-NNN.md` |
+| コマンド | 下記 |
 
 ```text
 cd backend
