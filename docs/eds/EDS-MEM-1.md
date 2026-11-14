@@ -5,8 +5,8 @@
 | 文書ID | `EDS-MEM-1` |
 | 機能 | `MEM`（会員） |
 | 版 | `0.2` |
-| 状態 | `draft`（レビュー反映済み・人の承認待ち） |
-| 関連文書 | UT: `docs/ut/plans/UT-MEM-1`（未作成） / IT: `docs/it/plans/IT-MEM-1`（未作成） / アーキテクチャ: [go-architecture.md](../go-architecture.md) |
+| 状態 | `approved` |
+| 関連文書 | OpenAPI: `backend/openapi/openapi.yaml` / UT: `docs/ut/plans/UT-MEM-1`（未作成） / IT: `docs/it/plans/IT-MEM-1`（未作成） / アーキテクチャ: [go-architecture.md](../go-architecture.md) |
 
 ---
 
