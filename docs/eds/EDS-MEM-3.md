@@ -6,7 +6,7 @@
 | 機能 | `MEM`（会員フロント） |
 | 版 | `0.1` |
 | 状態 | `approved` |
-| 関連文書 | API 正本: [EDS-MEM-1](./EDS-MEM-1.md) / OpenAPI: `backend/openapi/openapi.yaml` / アーキテクチャ: [frontend-architecture.md](../frontend-architecture.md) / UT: [UT-MEM-3](../ut/plans/UT-MEM-3.md)（approved） / IT: （必要時） |
+| 関連文書 | API 正本: [EDS-MEM-1](./EDS-MEM-1.md) / OpenAPI: `backend/openapi/openapi.yaml` / アーキテクチャ: [frontend-architecture.md](../frontend-architecture.md) / UT: [UT-MEM-3](../ut/plans/UT-MEM-3.md)（approved） / IT: [IT-MEM-3](../it/plans/IT-MEM-3.md)（approved） |
 
 ---
 

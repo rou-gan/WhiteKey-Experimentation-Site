@@ -70,6 +70,7 @@ frontend/
 - `lib/member/*` … 入力制約・Argon2id+HMAC・API・sessionStorage・汎用エラー（UT-MEM-3）
 - ブラウザから backend を直接呼ぶ。ログイン時は平文パスワードを送らない。
 - クライアント向け API ベースは `NEXT_PUBLIC_API_BASE_URL`（未設定時は `http://localhost:8080`）
+- ブラウザ E2E: Playwright（`npm run test:e2e`）。計画は [IT-MEM-3](./it/plans/IT-MEM-3.md)。backend `:8080` と `npm run dev` を起動したうえでローカル実行する。
 
 ## セキュリティ実験（DOM XSS）
 
