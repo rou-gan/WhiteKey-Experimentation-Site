@@ -1,6 +1,4 @@
-import hashWasm from "hash-wasm";
-
-const { argon2id, createHMAC, createSHA256 } = hashWasm;
+import { argon2id, createHMAC, createSHA256 } from "hash-wasm";
 
 /** EDS-MEM-1 付録 A 最低ライン（弱めない）。 */
 export const ARGON2_MEMORY_KIB = 19_456;
