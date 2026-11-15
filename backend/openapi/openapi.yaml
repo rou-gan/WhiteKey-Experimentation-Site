@@ -421,4 +421,4 @@ components:
         expiresAt:
           type: string
           format: date-time
-          description: セッション有効期限（RFC3339）。寿命は有限（目安: 数時間）
+          description: "セッション有効期限（RFC3339）。寿命は有限（目安: 数時間）"
