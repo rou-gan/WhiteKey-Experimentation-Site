@@ -6,7 +6,7 @@
 | 機能 | `MEM`（会員フロント） |
 | 版 | `0.1` |
 | 状態 | `approved` |
-| 関連文書 | API 正本: [EDS-MEM-1](./EDS-MEM-1.md) / OpenAPI: `backend/openapi/openapi.yaml` / アーキテクチャ: [frontend-architecture.md](../frontend-architecture.md) / UT: `docs/ut/plans/UT-MEM-3`（未作成） / IT: （必要時） |
+| 関連文書 | API 正本: [EDS-MEM-1](./EDS-MEM-1.md) / OpenAPI: `backend/openapi/openapi.yaml` / アーキテクチャ: [frontend-architecture.md](../frontend-architecture.md) / UT: [UT-MEM-3](../ut/plans/UT-MEM-3.md)（approved） / IT: （必要時） |
 
 ---
 
@@ -324,9 +324,9 @@ stateDiagram-v2
 
 | 本設計の対象 | UT | IT |
 | --- | --- | --- |
-| 全体 | `UT-MEM-3`（未作成） | 必要時に採番 |
-| F-01 登録クライアント | （計画時） | — |
-| F-02 クライアント認証計算 | （計画時） | — |
-| F-03〜F-05 セッション／退会呼び出し | （計画時） | — |
+| 全体 | [UT-MEM-3](../ut/plans/UT-MEM-3.md) | 必要時に採番 |
+| F-01 登録クライアント | V-* / C-01〜C-02 / E-01 | — |
+| F-02 クライアント認証計算 | A-* / C-03〜C-05 / C-08 / E-02 | — |
+| F-03〜F-05 セッション／退会呼び出し | S-* / C-06〜C-07 / E-03 | — |
 
 画面 E2E は初期必須としない。入力制約・KDF/HMAC・API ヘルパを UT の主対象とする。backend 単体の契約検証は `UT-MEM-1` / `IT-MEM-1` に任せ、FE 側に焼かない。
