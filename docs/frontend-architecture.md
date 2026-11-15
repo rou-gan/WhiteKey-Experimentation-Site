@@ -62,6 +62,14 @@ frontend/
 - ブランド名「しろかぎ」を第一ビューに出す。
 - backend `GET /` の JSON（`{"message":"..."}`）を取得して表示する。
 - 取得失敗時は汎用メッセージのみ（内部エラー詳細は出さない）。
+- 会員画面へのリンク（`/members/register`・`/members/login`）を置く。
+
+## 会員画面（EDS-MEM-3）
+
+- `app/members/register` / `login` / `me` … 最小フォーム（Client Components）
+- `lib/member/*` … 入力制約・Argon2id+HMAC・API・sessionStorage・汎用エラー（UT-MEM-3）
+- ブラウザから backend を直接呼ぶ。ログイン時は平文パスワードを送らない。
+- クライアント向け API ベースは `NEXT_PUBLIC_API_BASE_URL`（未設定時は `http://localhost:8080`）
 
 ## セキュリティ実験（DOM XSS）
 

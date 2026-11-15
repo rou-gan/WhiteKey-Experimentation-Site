@@ -28,6 +28,11 @@ export default async function HomePage() {
             <p className={styles.message}>{message}</p>
           )}
         </div>
+        <p className={styles.memberLinks}>
+          <a href="/members/register">登録</a>
+          {" · "}
+          <a href="/members/login">ログイン</a>
+        </p>
       </section>
     </main>
   );
