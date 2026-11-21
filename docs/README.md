@@ -57,7 +57,8 @@
 | `1` | 会員 API（member）トピック | `feature/1-member` |
 | `2` | **取り消し（revert）専用** | `feature/2-revert-main-eds` |
 | `3` | 会員フロント（member-web）トピック | `feature/3-member-web` |
-| `4` 以降 | 次の通常機能から採番 | |
+| `4` | メインキャラ原本（docs 画像） | `feature/4-character-sheet` |
+| `5` 以降 | 次の通常機能から採番 | |
 
 ## 新しい文書の作り方
 
