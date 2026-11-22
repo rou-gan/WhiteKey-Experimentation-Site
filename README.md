@@ -161,3 +161,4 @@ npm run dev
 - **Phase 3:** SCAP / Policy as Code、監査ログ収集の実験
 - **Phase 4:** Auth0 による認証基盤の追加（frontend / backend への統合と保護 API の実験）
 - **Phase 5:** 要認証の MCP サーバー構築（Auth0 と連携したアクセス制御の検証）
+  - 実験（API キー + stdio）: [`mcp/message-server`](mcp/message-server)

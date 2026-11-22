@@ -47,6 +47,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# MCP experiment
+mcp/message-server/node_modules/
+
 # Test / scan reports (local)
 *.sarif
 *-trivy-*.txt
