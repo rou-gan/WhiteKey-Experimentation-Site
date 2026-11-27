@@ -1,5 +1,5 @@
 # OWASP ZAP DAST（Automation Framework / Docker）
-# Baseline + OpenAPI パッシブ。High 以上でジョブ失敗。
+# Baseline + OpenAPI パッシブ + 認証付き DELETE /members/me。High 以上でジョブ失敗。
 # PR Verify ゲートにはしない（手動 / 週次のみ）。
 name: ZAP DAST
 
@@ -67,6 +67,19 @@ jobs:
           docker compose -f "${COMPOSE_FILE}" logs --tail=100
           exit 1
 
+      - name: Seed authenticated member and render plan
+        working-directory: .github/zap
+        run: |
+          set -euo pipefail
+          npm ci
+          # ホスト側から publish された api:8080 へ（compose 内ホスト名ではない）
+          TOKEN="$(ZAP_TARGET_API=http://localhost:8080 node seed-member.mjs)"
+          if [ -z "${TOKEN}" ]; then
+            echo "seed-member.mjs returned empty token" >&2
+            exit 1
+          fi
+          ZAP_SESSION_TOKEN="${TOKEN}" node render-plan.mjs
+
       - name: Run ZAP Automation Framework
         run: |
           docker run --rm \
@@ -75,7 +88,7 @@ jobs:
             -e "ZAP_TARGET_FE=${ZAP_TARGET_FE}" \
             -e "ZAP_TARGET_API=${ZAP_TARGET_API}" \
             ghcr.io/zaproxy/zaproxy:stable \
-            zap.sh -cmd -autorun /zap/wrk/.github/zap/plan.yaml
+            zap.sh -cmd -autorun /zap/wrk/zap-out/plan.runtime.yaml
 
       - name: Upload ZAP reports
         if: always()

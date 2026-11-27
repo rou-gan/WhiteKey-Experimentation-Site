@@ -1,0 +1,97 @@
+# 実験用: Baseline + OpenAPI + activeScan（攻撃的スキャン）。
+# 本番／週次の正本は plan.yaml。このファイルは CI ワークフローには繋がない。
+#
+# 前提: 使い捨て compose（.github/zap/docker-compose.yml）のみ。共有 dev / 本番禁止。
+# /experiment/* は除外。activeScan は時間上限あり。
+#
+# ローカル実行例（リポジトリ直下）:
+#   1) compose up（POSTGRES_* / DATABASE_URL 付き）
+#   2) TOKEN="$(ZAP_TARGET_API=http://localhost:8080 node .github/zap/seed-member.mjs)"
+#   3) ZAP_SESSION_TOKEN="$TOKEN" node .github/zap/render-plan.mjs plan-active.yaml
+#   4) docker run --rm --network zapnet -v "${PWD}:/zap/wrk:rw" \
+#        -e ZAP_TARGET_FE=http://frontend:3000 -e ZAP_TARGET_API=http://api:8080 \
+#        ghcr.io/zaproxy/zaproxy:stable \
+#        zap.sh -cmd -autorun /zap/wrk/zap-out/plan-active.runtime.yaml
+#
+# 認証: requestor の DELETE のみ Bearer 付き。
+# activeScan 本体は未認証で見つかった URL が中心（グローバル Authorization は
+# OpenAPI の DELETE を先に成功させてしまうため付けない）。
+env:
+  contexts:
+    - name: whitekey
+      urls:
+        - "${ZAP_TARGET_FE}"
+        - "${ZAP_TARGET_API}"
+      excludePaths:
+        - ".*/experiment/.*"
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: passiveScan-config
+    parameters:
+      enableTags: false
+      maxAlertsPerRule: 10
+
+  - type: openapi
+    name: import-backend-openapi
+    parameters:
+      apiFile: /zap/wrk/backend/openapi/openapi.yaml
+      targetUrl: "${ZAP_TARGET_API}"
+      context: whitekey
+
+  - type: spider
+    parameters:
+      context: whitekey
+      url: "${ZAP_TARGET_FE}"
+      maxDuration: 3
+      maxDepth: 5
+
+  - type: activeScan
+    name: active-scan-whitekey
+    parameters:
+      context: whitekey
+      maxRuleDurationInMins: 1
+      maxScanDurationInMins: 10
+      addQueryParam: false
+      delayInMs: 0
+      handleAntiCSRFTokens: false
+      scanHeadersAllRequests: false
+
+  - type: requestor
+    name: auth-delete-me
+    parameters:
+      user: ""
+    requests:
+      - url: "${ZAP_TARGET_API}/members/me"
+        name: delete-me-authenticated
+        method: DELETE
+        headers:
+          - "Authorization: Bearer __ZAP_SESSION_TOKEN__"
+        responseCode: 204
+
+  - type: passiveScan-wait
+    parameters:
+      maxDuration: 5
+
+  - type: report
+    parameters:
+      template: traditional-html
+      reportDir: /zap/wrk/zap-out
+      reportFile: zap-report-active
+      reportTitle: WhiteKey ZAP Active Scan (experiment)
+      reportDescription: Baseline + OpenAPI + activeScan (local experiment only)
+
+  - type: report
+    parameters:
+      template: traditional-json
+      reportDir: /zap/wrk/zap-out
+      reportFile: zap-report-active
+      reportTitle: WhiteKey ZAP Active Scan (experiment)
+      reportDescription: Baseline + OpenAPI + activeScan (local experiment only)
+
+  - type: exitStatus
+    parameters:
+      errorLevel: High

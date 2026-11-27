@@ -2,6 +2,8 @@
 # Baseline 相当（spider + パッシブ）+ OpenAPI 取り込み。activeScan なし。
 # High 以上で exit 1（exitStatus）。
 # /experiment/* は意図的ドリルのため OpenAPI import / spider 対象外（context 除外が openapi にも効く）。
+# 認証付き DELETE /members/me はシード後に plan.runtime.yaml へトークンを埋め込み requestor する。
+# プレースホルダ __ZAP_SESSION_TOKEN__ は render-plan.mjs が置換する（AF の header 変数展開に頼らない）。
 env:
   contexts:
     - name: whitekey
@@ -34,6 +36,18 @@ jobs:
       url: "${ZAP_TARGET_FE}"
       maxDuration: 3
       maxDepth: 5
+
+  - type: requestor
+    name: auth-delete-me
+    parameters:
+      user: ""
+    requests:
+      - url: "${ZAP_TARGET_API}/members/me"
+        name: delete-me-authenticated
+        method: DELETE
+        headers:
+          - "Authorization: Bearer __ZAP_SESSION_TOKEN__"
+        responseCode: 204
 
   - type: passiveScan-wait
     parameters:
