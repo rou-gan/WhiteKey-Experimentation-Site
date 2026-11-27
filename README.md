@@ -4,6 +4,9 @@
 
 本番運用を想定したセキュアな CI/CD パイプラインおよび監視・監査プロセスを、Render.com および GitHub Actions 環境でローコスト（無料枠・低コスト）に検証することを目的とする。
 
+> **これは本番向けテンプレートではありません。**  
+> 学習・検証用の実験リポジトリです。`.env.example` の資格情報、テスト用パスワード、`internal/experiment/` や実験ブランチのドリルは、そのまま本番に持ち込まないでください。Deploy Hook や API キーなどの秘密は GitHub Actions の Secrets に置き、リポジトリ本文には書きません。
+
 ## リポジトリ構成
 
 モノレポ構成。Go API は `backend/`、Next.js は `frontend/` に分離する（別コンテナ）。
