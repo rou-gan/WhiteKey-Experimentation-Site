@@ -56,6 +56,7 @@ mcp/message-server/node_modules/
 *-sbom*.json
 coverage.out
 coverage.html
+zap-out/
 
 # Docker
 *.log
