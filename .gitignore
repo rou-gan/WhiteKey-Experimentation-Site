@@ -49,6 +49,7 @@ pnpm-debug.log*
 
 # MCP experiment
 mcp/message-server/node_modules/
+.github/zap/node_modules/
 
 # Test / scan reports (local)
 *.sarif

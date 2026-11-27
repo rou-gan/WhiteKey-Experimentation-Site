@@ -288,6 +288,7 @@ Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Au
 
 - 公式イメージ `ghcr.io/zaproxy/zaproxy:stable` で `zap.sh -cmd -autorun` を実行する。
 - スキャン深さは **Baseline 相当**（spider + パッシブ）＋ backend OpenAPI 取り込み。**activeScan は含めない**。
+- 認証付き書き込みは、スキャン前に [`.github/zap/seed-member.mjs`](../.github/zap/seed-member.mjs) で使い捨て会員を登録・verify し、[`render-plan.mjs`](../.github/zap/render-plan.mjs) で Bearer を埋め込んだ `zap-out/plan.runtime.yaml` を生成、AF `requestor` が `DELETE /members/me` を踏む。
 - AF `exitStatus` の `errorLevel: High` により、High 以上のアラートでジョブを失敗させる（Medium 以下では落とさない）。
 - レポート（HTML / JSON）を Artifact に保存する。
 - **PR Verify やマージ必須ゲートにはしない**（手動 `workflow_dispatch` と週次 schedule）。
@@ -296,6 +297,8 @@ Actions runner 上で backend / frontend を Docker 起動し、OWASP ZAP の Au
 
 - Workflow: [`.github/workflows/zap-dast.yml`](../.github/workflows/zap-dast.yml)
 - AF 計画: [`.github/zap/plan.yaml`](../.github/zap/plan.yaml)
+- 実験用 activeScan 計画（CI 未接続・使い捨て compose のみ）: [`.github/zap/plan-active.yaml`](../.github/zap/plan-active.yaml)
+- 認証シード: [`.github/zap/seed-member.mjs`](../.github/zap/seed-member.mjs)
 - CI 用 compose: [`.github/zap/docker-compose.yml`](../.github/zap/docker-compose.yml)（DB パスワードはジョブ開始時に乱数生成し `${VAR}` 注入。YAML に平文パスは置かない）
 
 ### 受け入れ条件

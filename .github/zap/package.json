@@ -1,0 +1,9 @@
+{
+  "name": "whitekey-zap-seed",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "hash-wasm": "^4.13.0"
+  }
+}
